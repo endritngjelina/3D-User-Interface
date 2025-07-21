@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced 3D UI Components</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
+            height: 100vh;
+            color: #fff;
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .component-info {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            z-index: 100;
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 300px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .component-item {
+            margin: 10px 0;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .component-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+        .component-icon {
+            font-size: 20px;
+            width: 30px;
+            text-align: center;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 200;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 30px 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #6366f1;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .settings-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(10, 15, 30, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 300px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .close-settings {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .setting-item {
+            margin: 15px 0;
+        }
+
+        .setting-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            width: 40px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .theme-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .theme-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .theme-btn.active {
+            border-color: white;
+            transform: scale(1.1);
+        }
+
+        .theme-default { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .theme-dark { background: linear-gradient(135deg, #1a1a2e, #16213e); }
+        .theme-neon { background: linear-gradient(135deg, #ff0080, #00ff80); }
+        .theme-sunset { background: linear-gradient(135deg, #ff6b35, #f7931e); }
+        .theme-ocean { background: linear-gradient(135deg, #0ea5e9, #023e8a); }
+
+        .value-display {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .title-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 15, 30, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .title-bar h1 {
+            font-size: 20px;
+            font-weight: 600;
+            background: linear-gradient(to right, #8b5cf6, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .settings-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="title-bar">
+            <h1>Enhanced 3D UI Components</h1>
+            <button class="settings-btn" id="settingsToggle">Settings</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <div>Initializing 3D UI Library...</div>
+        </div>
+        
+        <div class="ui-overlay" style="display: none;" id="info">
+            <h2>Enhanced 3D UI Library</h2>
+            <p>Professional-grade interactive components with sound effects, labels, and animations</p>
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <h3>New Features:</h3>
+                <ul style="margin-top: 10px; padding-left: 20px;">
+                    <li>Progress Bar Component</li>
+                    <li>Component Labels & Value Displays</li>
+                    <li>Sound Effects for Interactions</li>
+                    <li>Hover Particle Effects</li>
+                    <li>Visual Settings Panel</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="component-info" style="display: none;" id="componentInfo">
+            <h3>Interactive Components</h3>
+            <div class="component-item" data-component="button">
+                <div class="component-icon">🔘</div>
+                <div>3D Button - Click to activate</div>
+            </div>
+            <div class="component-item" data-component="slider">
+                <div class="component-icon">🎚️</div>
+                <div>Volume Slider - Drag to adjust</div>
+            </div>
+            <div class="component-item" data-component="toggle">
+                <div class="component-icon">🔄</div>
+                <div>Toggle Switch - On/Off state</div>
+            </div>
+            <div class="component-item" data-component="dial">
+                <div class="component-icon">⚙️</div>
+                <div>Rotary Dial - Precision control</div>
+            </div>
+            <div class="component-item" data-component="panel">
+                <div class="component-icon">📱</div>
+                <div>Control Panel - Multi-function</div>
+            </div>
+            <div class="component-item" data-component="progressbar">
+                <div class="component-icon">📊</div>
+                <div>Progress Bar - Visual indicator</div>
+            </div>
+        </div>
+
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-header">
+                <h3>Visual Settings</h3>
+                <button class="close-settings" id="closeSettings">✕</button>
+            </div>
+            
+            <div class="setting-item">
+                <label class="setting-label">Bloom Intensity</label>
+                <div class="slider-container">
+                    <input type="range" min="0" max="2" step="0.1" value="1" class="slider" id="bloomIntensity">
+                    <div class="slider-value" id="bloomValue">1.0</div>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <label class="setting-label">Animation Speed</label>
+                <div class="slider-container">
+                    <input type="range" min="0.5" max="2" step="0.1" value="1" class="slider" id="animSpeed">
+                    <div class="slider-value" id="animValue">1.0</div>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <label class="setting-label">Sound Volume</label>
+                <div class="slider-container">
+                    <input type="range" min="0" max="1" step="0.1" value="0.5" class="slider" id="soundVolume">
+                    <div class="slider-value" id="soundValue">0.5</div>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <label class="setting-label">Color Theme</label>
+                <div class="theme-selector">
+                    <div class="theme-btn theme-default active" data-theme="default"></div>
+                    <div class="theme-btn theme-dark" data-theme="dark"></div>
+                    <div class="theme-btn theme-neon" data-theme="neon"></div>
+                    <div class="theme-btn theme-sunset" data-theme="sunset"></div>
+                    <div class="theme-btn theme-ocean" data-theme="ocean"></div>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <button class="control-btn" style="width:100%; margin-top:10px;" onclick="UI3D.resetCamera()">Reset Camera</button>
+            </div>
+        </div>
+
+        <div class="controls" style="display: none;" id="controls">
+            <button class="control-btn" onclick="UI3D.resetCamera()">Reset View</button>
+            <button class="control-btn" onclick="UI3D.toggleAnimation()">Toggle Animation</button>
+            <button class="control-btn" onclick="UI3D.randomizeComponents()">Randomize</button>
+        </div>
+    </div>
+
+    <script>
+        // 3D UI Components Library
+        class UI3DLibrary {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.composer = null;
+                this.controls = null;
+                this.components = [];
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+                this.animationEnabled = true;
+                this.hoveredObject = null;
+                this.dragObject = null;
+                this.clock = new THREE.Clock();
+                this.audioContext = null;
+                this.animSpeed = 1.0;
+                this.soundVolume = 0.5;
+                this.hoverParticles = [];
+                this.valueDisplays = [];
+                this.labels = [];
+                
+                this.init();
+            }
+
+            async init() {
+                await this.setupScene();
+                await this.createComponents();
+                this.setupEventListeners();
+                this.animate();
+                this.hideLoading();
+            }
+
+            async setupScene() {
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x1a1a2e);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 0, 8);
+
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true, 
+                    alpha: true,
+                    powerPreference: "high-performance"
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                
+                document.getElementById('container').appendChild(this.renderer.domElement);
+
+                // OrbitControls
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.screenSpacePanning = false;
+                this.controls.minDistance = 5;
+                this.controls.maxDistance = 15;
+                this.controls.maxPolarAngle = Math.PI / 2;
+
+                // Post-processing
+                this.composer = new THREE.EffectComposer(this.renderer);
+                const renderPass = new THREE.RenderPass(this.scene, this.camera);
+                this.composer.addPass(renderPass);
+                
+                const bloomPass = new THREE.UnrealBloomPass(
+                    new THREE.Vector2(window.innerWidth, window.innerHeight),
+                    1.5, // strength
+                    0.4, // radius
+                    0.85 // threshold
+                );
+                this.composer.addPass(bloomPass);
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+
+                // Accent lights
+                const light1 = new THREE.PointLight(0x6366f1, 0.8, 20);
+                light1.position.set(-5, 3, 3);
+                this.scene.add(light1);
+
+                const light2 = new THREE.PointLight(0x8b5cf6, 0.6, 15);
+                light2.position.set(5, -3, 3);
+                this.scene.add(light2);
+
+                // Create particle system for hover effects
+                this.hoverParticleSystem = new THREE.Object3D();
+                this.scene.add(this.hoverParticleSystem);
+            }
+
+            async createComponents() {
+                // Create different 3D UI components
+                await this.createButton();
+                await this.createSlider();
+                await this.createToggle();
+                await this.createDial();
+                await this.createPanel();
+                await this.createProgressBar();
+            }
+
+            async createButton() {
+                const buttonGroup = new THREE.Group();
+                buttonGroup.position.set(-4, 2, 0);
+
+                // Button base
+                const baseGeometry = new THREE.BoxGeometry(1.5, 0.8, 0.3);
+                const baseMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x6366f1,
+                    metalness: 0.3,
+                    roughness: 0.1,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.1
+                });
+                const base = new THREE.Mesh(baseGeometry, baseMaterial);
+                base.castShadow = true;
+                base.receiveShadow = true;
+                buttonGroup.add(base);
+
+                // Button top
+                const topGeometry = new THREE.BoxGeometry(1.3, 0.6, 0.2);
+                const topMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x8b5cf6,
+                    metalness: 0.1,
+                    roughness: 0.05,
+                    clearcoat: 1.0
+                });
+                const top = new THREE.Mesh(topGeometry, topMaterial);
+                top.position.z = 0.25;
+                top.castShadow = true;
+                buttonGroup.add(top);
+
+                // Glow effect
+                const glowGeometry = new THREE.BoxGeometry(1.8, 1.0, 0.4);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x6366f1,
+                    transparent: true,
+                    opacity: 0.2
+                });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                glow.position.z = -0.1;
+                buttonGroup.add(glow);
+
+                // Button label
+                this.createTextLabel(buttonGroup, "BUTTON", 0.2, 0xffffff, 0.01);
+
+                buttonGroup.userData = {
+                    type: 'button',
+                    pressed: false,
+                    originalPosition: top.position.z,
+                    topMesh: top,
+                    glowMesh: glow,
+                    baseMesh: base
+                };
+
+                this.scene.add(buttonGroup);
+                this.components.push(buttonGroup);
+            }
+
+            async createSlider() {
+                const sliderGroup = new THREE.Group();
+                sliderGroup.position.set(0, 2, 0);
+
+                // Slider track
+                const trackGeometry = new THREE.BoxGeometry(3, 0.2, 0.2);
+                const trackMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x374151,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const track = new THREE.Mesh(trackGeometry, trackMaterial);
+                track.castShadow = true;
+                track.receiveShadow = true;
+                sliderGroup.add(track);
+
+                // Slider handle
+                const handleGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.6, 16);
+                const handleMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x10b981,
+                    metalness: 0.2,
+                    roughness: 0.1,
+                    clearcoat: 1.0
+                });
+                const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+                handle.rotation.z = Math.PI / 2;
+                handle.position.x = -0.5;
+                handle.position.z = 0.4;
+                handle.castShadow = true;
+                sliderGroup.add(handle);
+
+                // Progress indicator
+                const progressGeometry = new THREE.BoxGeometry(1, 0.15, 0.15);
+                const progressMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x10b981,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const progress = new THREE.Mesh(progressGeometry, progressMaterial);
+                progress.position.x = -1;
+                progress.position.z = 0.01;
+                sliderGroup.add(progress);
+
+                // Slider label
+                this.createTextLabel(sliderGroup, "SLIDER", -0.6, 0xffffff, 0.01);
+
+                sliderGroup.userData = {
+                    type: 'slider',
+                    value: 0.3,
+                    handle: handle,
+                    progress: progress,
+                    minX: -1.5,
+                    maxX: 1.5,
+                    isDragging: false
+                };
+
+                // Create value display
+                this.createValueDisplay(sliderGroup, "30%", handle.position);
+
+                this.scene.add(sliderGroup);
+                this.components.push(sliderGroup);
+            }
+
+            async createToggle() {
+                const toggleGroup = new THREE.Group();
+                toggleGroup.position.set(4, 2, 0);
+
+                // Toggle base
+                const baseGeometry = new THREE.BoxGeometry(2, 0.8, 0.4);
+                const baseMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x374151,
+                    metalness: 0.3,
+                    roughness: 0.2
+                });
+                const base = new THREE.Mesh(baseGeometry, baseMaterial);
+                base.castShadow = true;
+                base.receiveShadow = true;
+                toggleGroup.add(base);
+
+                // Toggle switch
+                const switchGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+                const switchMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0xef4444,
+                    metalness: 0.1,
+                    roughness: 0.05,
+                    clearcoat: 1.0
+                });
+                const switchMesh = new THREE.Mesh(switchGeometry, switchMaterial);
+                switchMesh.position.x = -0.6;
+                switchMesh.position.z = 0.3;
+                switchMesh.castShadow = true;
+                toggleGroup.add(switchMesh);
+
+                // Toggle label
+                this.createTextLabel(toggleGroup, "TOGGLE", 0.2, 0xffffff, 0.01);
+
+                toggleGroup.userData = {
+                    type: 'toggle',
+                    isOn: false,
+                    switch: switchMesh,
+                    base: base,
+                    switchMaterial: switchMaterial
+                };
+
+                // Create value display
+                this.createValueDisplay(toggleGroup, "OFF", new THREE.Vector3(0, 0.6, 0));
+
+                this.scene.add(toggleGroup);
+                this.components.push(toggleGroup);
+            }
+
+            async createDial() {
+                const dialGroup = new THREE.Group();
+                dialGroup.position.set(-2, -1, 0);
+
+                // Dial base
+                const baseGeometry = new THREE.CylinderGeometry(1, 1, 0.3, 32);
+                const baseMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x1f2937,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const base = new THREE.Mesh(baseGeometry, baseMaterial);
+                base.castShadow = true;
+                base.receiveShadow = true;
+                dialGroup.add(base);
+
+                // Dial knob
+                const knobGeometry = new THREE.CylinderGeometry(0.7, 0.7, 0.4, 32);
+                const knobMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x6366f1,
+                    metalness: 0.2,
+                    roughness: 0.1,
+                    clearcoat: 1.0
+                });
+                const knob = new THREE.Mesh(knobGeometry, knobMaterial);
+                knob.position.y = 0.35;
+                knob.castShadow = true;
+                dialGroup.add(knob);
+
+                // Dial indicator
+                const indicatorGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+                const indicatorMaterial = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+                const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+                indicator.position.y = 0.6;
+                indicator.position.x = 0.5;
+                knob.add(indicator);
+
+                // Dial label
+                this.createTextLabel(dialGroup, "DIAL", 0.2, 0xffffff, 0.01);
+
+                dialGroup.userData = {
+                    type: 'dial',
+                    rotation: 0,
+                    knob: knob,
+                    isDragging: false
+                };
+
+                // Create value display
+                this.createValueDisplay(dialGroup, "0°", new THREE.Vector3(0, 1.2, 0));
+
+                this.scene.add(dialGroup);
+                this.components.push(dialGroup);
+            }
+
+            async createPanel() {
+                const panelGroup = new THREE.Group();
+                panelGroup.position.set(2, -1, 0);
+
+                // Panel base
+                const baseGeometry = new THREE.BoxGeometry(2.5, 2, 0.2);
+                const baseMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x111827,
+                    metalness: 0.9,
+                    roughness: 0.1
+                });
+                const base = new THREE.Mesh(baseGeometry, baseMaterial);
+                base.castShadow = true;
+                base.receiveShadow = true;
+                panelGroup.add(base);
+
+                // Panel screen
+                const screenGeometry = new THREE.BoxGeometry(2, 1.5, 0.05);
+                const screenMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x0f172a,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+                screen.position.z = 0.125;
+                panelGroup.add(screen);
+
+                // Panel buttons
+                const buttons = [];
+                for (let i = 0; i < 3; i++) {
+                    const btnGeometry = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16);
+                    const btnMaterial = new THREE.MeshPhysicalMaterial({
+                        color: [0x10b981, 0xf59e0b, 0xef4444][i],
+                        metalness: 0.1,
+                        roughness: 0.05
+                    });
+                    const btn = new THREE.Mesh(btnGeometry, btnMaterial);
+                    btn.position.set(-0.6 + i * 0.6, -0.6, 0.15);
+                    btn.rotation.x = Math.PI / 2;
+                    btn.castShadow = true;
+                    panelGroup.add(btn);
+                    buttons.push(btn);
+                }
+
+                // Panel label
+                this.createTextLabel(panelGroup, "CONTROL PANEL", 0.2, 0xffffff, 0.01);
+
+                panelGroup.userData = {
+                    type: 'panel',
+                    buttons: buttons,
+                    screen: screen,
+                    activeButton: -1
+                };
+
+                this.scene.add(panelGroup);
+                this.components.push(panelGroup);
+            }
+
+            async createProgressBar() {
+                const progressGroup = new THREE.Group();
+                progressGroup.position.set(0, -3, 0);
+
+                // Progress bar base
+                const baseGeometry = new THREE.BoxGeometry(3, 0.2, 0.2);
+                const baseMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x374151,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const base = new THREE.Mesh(baseGeometry, baseMaterial);
+                base.castShadow = true;
+                base.receiveShadow = true;
+                progressGroup.add(base);
+
+                // Progress fill
+                const fillGeometry = new THREE.BoxGeometry(1.8, 0.15, 0.15);
+                const fillMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x6366f1,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const fill = new THREE.Mesh(fillGeometry, fillMaterial);
+                fill.position.x = -0.6;
+                fill.position.z = 0.01;
+                progressGroup.add(fill);
+
+                // Progress label
+                this.createTextLabel(progressGroup, "PROGRESS BAR", 0.2, 0xffffff, 0.01);
+
+                progressGroup.userData = {
+                    type: 'progressbar',
+                    progress: 0.6,
+                    fill: fill,
+                    width: 3
+                };
+
+                // Update progress
+                this.updateProgressBar(progressGroup);
+
+                // Create value display
+                this.createValueDisplay(progressGroup, "60%", new THREE.Vector3(0, 0.3, 0));
+
+                this.scene.add(progressGroup);
+                this.components.push(progressGroup);
+            }
+
+            updateProgressBar(progressGroup) {
+                const progress = progressGroup.userData.progress;
+                const width = progressGroup.userData.width;
+                
+                // Update fill width
+                progressGroup.userData.fill.scale.x = progress;
+                progressGroup.userData.fill.position.x = -width/2 + (progress * width)/2;
+                
+                // Update value display
+                const valueDisplay = progressGroup.userData.valueDisplay;
+                if (valueDisplay) {
+                    valueDisplay.element.textContent = `${Math.round(progress * 100)}%`;
+                }
+            }
+
+            createTextLabel(parent, text, yOffset = 0.2, color = 0xffffff, size = 0.01) {
+                // Create a canvas for text rendering
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 512;
+                canvas.height = 128;
+                
+                context.fillStyle = '#ffffff';
+                context.font = 'bold 80px Arial';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, canvas.width/2, canvas.height/2);
+                
+                // Create texture
+                const texture = new THREE.CanvasTexture(canvas);
+                
+                // Create sprite material
+                const material = new THREE.SpriteMaterial({
+                    map: texture,
+                    transparent: true,
+                    color: color
+                });
+                
+                // Create sprite
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(3, 0.8, 1);
+                sprite.position.y = yOffset;
+                sprite.position.z = 0.3;
+                parent.add(sprite);
+                
+                // Store reference
+                parent.userData.label = sprite;
+                this.labels.push(sprite);
+                
+                return sprite;
+            }
+
+            createValueDisplay(parent, initialValue, offset) {
+                const displayElement = document.createElement('div');
+                displayElement.className = 'value-display';
+                displayElement.textContent = initialValue;
+                document.getElementById('container').appendChild(displayElement);
+                
+                parent.userData.valueDisplay = {
+                    element: displayElement,
+                    offset: offset.clone()
+                };
+                
+                this.valueDisplays.push({
+                    element: displayElement,
+                    parent: parent,
+                    offset: offset.clone()
+                });
+                
+                return displayElement;
+            }
+
+            updateValueDisplays() {
+                this.valueDisplays.forEach(display => {
+                    if (!display.parent.visible) {
+                        display.element.style.display = 'none';
+                        return;
+                    }
+                    
+                    const worldPosition = new THREE.Vector3();
+                    display.parent.getWorldPosition(worldPosition);
+                    worldPosition.add(display.offset);
+                    
+                    const screenPosition = worldPosition.clone();
+                    screenPosition.project(this.camera);
+                    
+                    const x = (screenPosition.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-screenPosition.y * 0.5 + 0.5) * window.innerHeight;
+                    
+                    display.element.style.left = `${x}px`;
+                    display.element.style.top = `${y}px`;
+                    display.element.style.display = 'block';
+                    
+                    // Update text based on component state
+                    const type = display.parent.userData.type;
+                    if (type === 'slider') {
+                        display.element.textContent = `${Math.round(display.parent.userData.value * 100)}%`;
+                    } else if (type === 'toggle') {
+                        display.element.textContent = display.parent.userData.isOn ? "ON" : "OFF";
+                    } else if (type === 'dial') {
+                        const degrees = Math.round(display.parent.userData.knob.rotation.y * (180/Math.PI));
+                        display.element.textContent = `${degrees}°`;
+                    } else if (type === 'progressbar') {
+                        display.element.textContent = `${Math.round(display.parent.userData.progress * 100)}%`;
+                    }
+                });
+            }
+
+            setupEventListeners() {
+                // Mouse events
+                window.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                window.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                window.addEventListener('mouseup', (e) => this.onMouseUp(e));
+                window.addEventListener('resize', () => this.onWindowResize());
+
+                // Component info events
+                document.querySelectorAll('.component-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const componentType = e.currentTarget.dataset.component;
+                        this.focusOnComponent(componentType);
+                    });
+                });
+
+                // Settings panel
+                document.getElementById('settingsToggle').addEventListener('click', () => {
+                    document.getElementById('settingsPanel').style.display = 'block';
+                });
+                
+                document.getElementById('closeSettings').addEventListener('click', () => {
+                    document.getElementById('settingsPanel').style.display = 'none';
+                });
+
+                // Settings sliders
+                document.getElementById('bloomIntensity').addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    document.getElementById('bloomValue').textContent = value.toFixed(1);
+                    this.composer.passes[1].strength = value;
+                });
+                
+                document.getElementById('animSpeed').addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    document.getElementById('animValue').textContent = value.toFixed(1);
+                    this.animSpeed = value;
+                });
+                
+                document.getElementById('soundVolume').addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    document.getElementById('soundValue').textContent = value.toFixed(1);
+                    this.soundVolume = value;
+                });
+
+                // Theme selector
+                document.querySelectorAll('.theme-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        
+                        const theme = btn.dataset.theme;
+                        this.applyTheme(theme);
+                    });
+                });
+            }
+
+            applyTheme(theme) {
+                const themes = {
+                    default: {
+                        background: ['#1a1a2e', '#16213e'],
+                        primary: 0x6366f1,
+                        secondary: 0x8b5cf6,
+                        accent: 0x10b981
+                    },
+                    dark: {
+                        background: ['#0d1117', '#161b22'],
+                        primary: 0x58a6ff,
+                        secondary: 0x1f6feb,
+                        accent: 0x238636
+                    },
+                    neon: {
+                        background: ['#0f0c29', '#302b63'],
+                        primary: 0xff0080,
+                        secondary: 0x00ff80,
+                        accent: 0x0080ff
+                    },
+                    sunset: {
+                        background: ['#2c0b37', '#5a1a4a'],
+                        primary: 0xff6b35,
+                        secondary: 0xf7931e,
+                        accent: 0xffb627
+                    },
+                    ocean: {
+                        background: ['#023e8a', '#0077b6'],
+                        primary: 0x0ea5e9,
+                        secondary: 0x023e8a,
+                        accent: 0x48cae4
+                    }
+                };
+                
+                const selectedTheme = themes[theme] || themes.default;
+                
+                // Update background
+                document.body.style.background = `linear-gradient(135deg, ${selectedTheme.background[0]} 0%, ${selectedTheme.background[1]} 100%)`;
+                
+                // Update components
+                this.components.forEach(component => {
+                    component.traverse(child => {
+                        if (child.isMesh && child.material) {
+                            if (child.material.color) {
+                                const color = child.material.color.getHex();
+                                
+                                if (color === 0x6366f1 || color === 0x8b5cf6) {
+                                    child.material.color.setHex(selectedTheme.primary);
+                                } else if (color === 0x10b981 || color === 0xfbbf24) {
+                                    child.material.color.setHex(selectedTheme.accent);
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+
+            onMouseMove(event) {
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                if (this.dragObject) {
+                    this.handleDrag(event);
+                } else {
+                    this.handleHover();
+                }
+            }
+
+            onMouseDown(event) {
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+                if (intersects.length > 0) {
+                    const clickedObject = this.getComponentFromMesh(intersects[0].object);
+                    if (clickedObject) {
+                        this.handleComponentClick(clickedObject);
+                    }
+                }
+                
+                // Initialize audio context on first interaction
+                if (!this.audioContext) {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            onMouseUp(event) {
+                this.dragObject = null;
+                this.components.forEach(comp => {
+                    if (comp.userData.type === 'slider') comp.userData.isDragging = false;
+                    if (comp.userData.type === 'dial') comp.userData.isDragging = false;
+                });
+            }
+
+            handleHover() {
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+                // Reset previous hover
+                if (this.hoveredObject) {
+                    this.resetHoverEffect(this.hoveredObject);
+                    this.hoveredObject = null;
+                }
+
+                if (intersects.length > 0) {
+                    const hoveredComponent = this.getComponentFromMesh(intersects[0].object);
+                    if (hoveredComponent) {
+                        this.hoveredObject = hoveredComponent;
+                        this.applyHoverEffect(hoveredComponent);
+                        document.body.style.cursor = 'pointer';
+                    } else {
+                        document.body.style.cursor = 'default';
+                    }
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            }
+
+            handleDrag(event) {
+                if (!this.dragObject) return;
+
+                const component = this.dragObject;
+                
+                if (component.userData.type === 'slider') {
+                    const rect = this.renderer.domElement.getBoundingClientRect();
+                    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                    
+                    const worldX = x * 4; // Approximate world coordinate
+                    const clampedX = Math.max(component.userData.minX, Math.min(component.userData.maxX, worldX));
+                    
+                    component.userData.handle.position.x = clampedX;
+                    component.userData.value = (clampedX - component.userData.minX) / (component.userData.maxX - component.userData.minX);
+                    
+                    // Update progress bar
+                    const progressWidth = (component.userData.value * 3);
+                    component.userData.progress.scale.x = progressWidth;
+                    component.userData.progress.position.x = -1.5 + progressWidth / 2;
+                    
+                    // Play sound
+                    this.playSound(400 + component.userData.value * 400, 0.1);
+                }
+            }
+
+            handleComponentClick(component) {
+                switch (component.userData.type) {
+                    case 'button':
+                        this.animateButton(component);
+                        this.playSound(523.25, 0.3); // C5
+                        break;
+                    case 'slider':
+                        component.userData.isDragging = true;
+                        this.dragObject = component;
+                        this.playSound(440, 0.1); // A4
+                        break;
+                    case 'toggle':
+                        this.animateToggle(component);
+                        this.playSound(component.userData.isOn ? 349.23 : 261.63, 0.3); // F4 or C4
+                        break;
+                    case 'dial':
+                        component.userData.isDragging = true;
+                        this.dragObject = component;
+                        this.playSound(329.63, 0.1); // E4
+                        break;
+                    case 'panel':
+                        this.animatePanel(component);
+                        this.playSound(587.33, 0.2); // D5
+                        break;
+                }
+            }
+
+            playSound(frequency, duration) {
+                if (!this.audioContext || this.soundVolume <= 0) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
+                gainNode.gain.value = this.soundVolume * 0.3;
+                
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+                oscillator.stop(this.audioContext.currentTime + duration);
+            }
+
+            createHoverParticles(position, color) {
+                // Clear existing particles
+                while(this.hoverParticleSystem.children.length > 0) { 
+                    this.hoverParticleSystem.remove(this.hoverParticleSystem.children[0]); 
+                }
+                
+                // Create new particles
+                const particleCount = 30;
+                const particles = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const sizes = new Float32Array(particleCount);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    
+                    // Position
+                    positions[i3] = position.x + (Math.random() - 0.5) * 0.5;
+                    positions[i3 + 1] = position.y + (Math.random() - 0.5) * 0.5;
+                    positions[i3 + 2] = position.z + (Math.random() - 0.5) * 0.5;
+                    
+                    // Color
+                    colors[i3] = color.r;
+                    colors[i3 + 1] = color.g;
+                    colors[i3 + 2] = color.b;
+                    
+                    // Size
+                    sizes[i] = Math.random() * 0.1 + 0.05;
+                }
+                
+                particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                particles.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.1,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const particleSystem = new THREE.Points(particles, material);
+                this.hoverParticleSystem.add(particleSystem);
+                
+                return particleSystem;
+            }
+
+            animateButton(component) {
+                const { topMesh, glowMesh } = component.userData;
+                const originalZ = component.userData.originalPosition;
+                
+                // Press animation
+                const pressAnim = () => {
+                    topMesh.position.z = originalZ - 0.1;
+                    glowMesh.material.opacity = 0.5;
+                    component.userData.pressed = true;
+                };
+                
+                // Release animation
+                const releaseAnim = () => {
+                    topMesh.position.z = originalZ;
+                    glowMesh.material.opacity = 0.2;
+                    component.userData.pressed = false;
+                };
+
+                pressAnim();
+                setTimeout(releaseAnim, 150);
+            }
+
+            animateToggle(component) {
+                const { switch: switchMesh, switchMaterial } = component.userData;
+                component.userData.isOn = !component.userData.isOn;
+                
+                const targetX = component.userData.isOn ? 0.6 : -0.6;
+                const targetColor = component.userData.isOn ? 0x10b981 : 0xef4444;
+                
+                // Animate position
+                const animatePosition = () => {
+                    const currentX = switchMesh.position.x;
+                    const diff = targetX - currentX;
+                    
+                    if (Math.abs(diff) > 0.01) {
+                        switchMesh.position.x += diff * 0.2;
+                        requestAnimationFrame(animatePosition);
+                    } else {
+                        switchMesh.position.x = targetX;
+                    }
+                };
+                
+                switchMaterial.color.setHex(targetColor);
+                animatePosition();
+            }
+
+            animatePanel(component) {
+                const { buttons, screen } = component.userData;
+                const activeIndex = Math.floor(Math.random() * buttons.length);
+                
+                // Reset all buttons
+                buttons.forEach((btn, i) => {
+                    btn.scale.setScalar(1);
+                    btn.material.emissive.setHex(0x000000);
+                });
+                
+                // Activate clicked button
+                const activeButton = buttons[activeIndex];
+                activeButton.scale.setScalar(0.8);
+                activeButton.material.emissive.setHex(0x333333);
+                
+                // Screen effect
+                screen.material.color.setHex([0x0f172a, 0x1e293b, 0x374151][activeIndex]);
+                
+                setTimeout(() => {
+                    activeButton.scale.setScalar(1);
+                    activeButton.material.emissive.setHex(0x000000);
+                    screen.material.color.setHex(0x0f172a);
+                }, 200);
+            }
+
+            applyHoverEffect(component) {
+                const color = new THREE.Color();
+                
+                switch (component.userData.type) {
+                    case 'button':
+                        component.userData.glowMesh.material.opacity = 0.4;
+                        color.set(0x6366f1);
+                        break;
+                    case 'slider':
+                        component.userData.handle.scale.setScalar(1.1);
+                        color.set(0x10b981);
+                        break;
+                    case 'toggle':
+                        component.userData.switch.scale.setScalar(1.1);
+                        color.set(component.userData.isOn ? 0x10b981 : 0xef4444);
+                        break;
+                    case 'dial':
+                        component.userData.knob.scale.setScalar(1.05);
+                        color.set(0x6366f1);
+                        break;
+                    case 'panel':
+                        component.scale.setScalar(1.02);
+                        color.set(0x8b5cf6);
+                        break;
+                    case 'progressbar':
+                        component.scale.setScalar(1.02);
+                        color.set(0x6366f1);
+                        break;
+                }
+                
+                // Get world position for particles
+                const worldPosition = new THREE.Vector3();
+                component.getWorldPosition(worldPosition);
+                worldPosition.z += 0.5;
+                
+                // Create hover particles
+                this.createHoverParticles(worldPosition, color);
+            }
+
+            resetHoverEffect(component) {
+                switch (component.userData.type) {
+                    case 'button':
+                        if (!component.userData.pressed) {
+                            component.userData.glowMesh.material.opacity = 0.2;
+                        }
+                        break;
+                    case 'slider':
+                        component.userData.handle.scale.setScalar(1);
+                        break;
+                    case 'toggle':
+                        component.userData.switch.scale.setScalar(1);
+                        break;
+                    case 'dial':
+                        component.userData.knob.scale.setScalar(1);
+                        break;
+                    case 'panel':
+                        component.scale.setScalar(1);
+                        break;
+                    case 'progressbar':
+                        component.scale.setScalar(1);
+                        break;
+                }
+            }
+
+            getComponentFromMesh(mesh) {
+                let current = mesh;
+                while (current && current.parent) {
+                    if (current.userData && current.userData.type) {
+                        return current;
+                    }
+                    current = current.parent;
+                }
+                return null;
+            }
+
+            focusOnComponent(componentType) {
+                const component = this.components.find(c => c.userData.type === componentType);
+                if (component) {
+                    const pos = component.position;
+                    const targetPos = new THREE.Vector3(pos.x, pos.y, pos.z + 3);
+                    
+                    // Smooth camera movement
+                    const animateCamera = () => {
+                        this.camera.position.lerp(targetPos, 0.05);
+                        this.camera.lookAt(pos);
+                        
+                        if (this.camera.position.distanceTo(targetPos) > 0.1) {
+                            requestAnimationFrame(animateCamera);
+                        }
+                    };
+                    
+                    animateCamera();
+                }
+            }
+
+            resetCamera() {
+                const targetPos = new THREE.Vector3(0, 0, 8);
+                const animateCamera = () => {
+                    this.camera.position.lerp(targetPos, 0.05);
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    if (this.camera.position.distanceTo(targetPos) > 0.1) {
+                        requestAnimationFrame(animateCamera);
+                    }
+                };
+                animateCamera();
+            }
+
+            toggleAnimation() {
+                this.animationEnabled = !this.animationEnabled;
+                this.playSound(this.animationEnabled ? 523.25 : 392.00, 0.2);
+            }
+
+            randomizeComponents() {
+                this.components.forEach(component => {
+                    // Random rotation
+                    component.rotation.y = Math.random() * Math.PI * 2;
+                    
+                    // Random hover effect
+                    if (Math.random() > 0.5) {
+                        this.applyHoverEffect(component);
+                        setTimeout(() => this.resetHoverEffect(component), 1000);
+                    }
+                    
+                    // Randomize values
+                    if (component.userData.type === 'slider') {
+                        component.userData.value = Math.random();
+                        const range = component.userData.maxX - component.userData.minX;
+                        component.userData.handle.position.x = component.userData.minX + (component.userData.value * range);
+                        const progressWidth = (component.userData.value * 3);
+                        component.userData.progress.scale.x = progressWidth;
+                        component.userData.progress.position.x = -1.5 + progressWidth / 2;
+                    } else if (component.userData.type === 'toggle') {
+                        component.userData.isOn = Math.random() > 0.5;
+                        const targetX = component.userData.isOn ? 0.6 : -0.6;
+                        const targetColor = component.userData.isOn ? 0x10b981 : 0xef4444;
+                        component.userData.switch.position.x = targetX;
+                        component.userData.switchMaterial.color.setHex(targetColor);
+                    } else if (component.userData.type === 'progressbar') {
+                        component.userData.progress = Math.random();
+                        this.updateProgressBar(component);
+                    }
+                });
+                
+                this.playSound(659.25, 0.2); // E5
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const elapsedTime = this.clock.getElapsedTime();
+                const delta = this.clock.getDelta();
+                
+                this.controls.update();
+                
+                if (this.animationEnabled) {
+                    // Subtle floating animation
+                    this.components.forEach((component, index) => {
+                        const offset = index * 0.5;
+                        component.position.y += Math.sin(elapsedTime * this.animSpeed + offset) * 0.002;
+                        component.rotation.z = Math.sin(elapsedTime * 0.5 * this.animSpeed + offset) * 0.02;
+                    });
+                    
+                    // Rotate hover particles
+                    if (this.hoverParticleSystem.children.length > 0) {
+                        this.hoverParticleSystem.rotation.y += delta * 0.5;
+                    }
+                }
+                
+                // Update value displays
+                this.updateValueDisplays();
+                
+                // Render with post-processing
+                this.composer.render();
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.composer.setSize(window.innerWidth, window.innerHeight);
+                
+                // Update value displays
+                this.updateValueDisplays();
+            }
+
+            hideLoading() {
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('info').style.display = 'block';
+                    document.getElementById('componentInfo').style.display = 'block';
+                    document.getElementById('controls').style.display = 'flex';
+                }, 1000);
+            }
+        }
+
+        // Initialize the 3D UI Library
+        const UI3D = new UI3DLibrary();
+
+        // Export for global access
+        window.UI3D = UI3D;
+    </script>
+</body>
+</html>
