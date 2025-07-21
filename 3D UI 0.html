@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D UI Components Library</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="ui-overlay">
+            <h3>3D UI Components Library</h3>
+            <p>Click and interact with the 3D components!</p>
+            <div id="component-status"></div>
+        </div>
+        
+        <div id="controls">
+            <div class="control-group">
+                <button onclick="ui3d.resetCamera()">Reset Camera</button>
+                <button onclick="ui3d.toggleAutoRotate()">Toggle Rotation</button>
+            </div>
+            <div class="control-group">
+                <button onclick="ui3d.addButton()">Add Button</button>
+                <button onclick="ui3d.addToggle()">Add Toggle</button>
+                <button onclick="ui3d.addSlider()">Add Slider</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 3D UI Components Library
+        class UI3D {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+                this.components = [];
+                this.hoveredComponent = null;
+                this.autoRotate = true;
+                
+                this.init();
+                this.setupLighting();
+                this.createInitialComponents();
+                this.animate();
+            }
+            
+            init() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000000, 0);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.getElementById('container').appendChild(this.renderer.domElement);
+                
+                this.camera.position.set(0, 0, 8);
+                
+                // Event listeners
+                window.addEventListener('resize', () => this.onWindowResize());
+                this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.renderer.domElement.addEventListener('click', (e) => this.onMouseClick(e));
+                this.renderer.domElement.addEventListener('wheel', (e) => this.onMouseWheel(e));
+            }
+            
+            setupLighting() {
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                // Directional light
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                // Point lights for ambiance
+                const pointLight1 = new THREE.PointLight(0x4fc3f7, 0.5, 50);
+                pointLight1.position.set(-5, 3, 2);
+                this.scene.add(pointLight1);
+                
+                const pointLight2 = new THREE.PointLight(0xe91e63, 0.3, 50);
+                pointLight2.position.set(5, -3, 2);
+                this.scene.add(pointLight2);
+            }
+            
+            createInitialComponents() {
+                // Create initial set of components
+                this.createButton(-3, 2, 0, 'Primary', 0x4fc3f7);
+                this.createButton(0, 2, 0, 'Success', 0x4caf50);
+                this.createButton(3, 2, 0, 'Warning', 0xff9800);
+                
+                this.createToggle(-2, 0, 0, true);
+                this.createToggle(2, 0, 0, false);
+                
+                this.createSlider(-3, -2, 0, 0.7);
+                this.createSlider(0, -2, 0, 0.3);
+                this.createSlider(3, -2, 0, 0.9);
+            }
+            
+            // Button Component
+            createButton(x, y, z, label = 'Button', color = 0x667eea) {
+                const buttonGroup = new THREE.Group();
+                
+                // Button base
+                const geometry = new THREE.BoxGeometry(1.5, 0.4, 0.3);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: color,
+                    shininess: 100
+                });
+                const button = new THREE.Mesh(geometry, material);
+                button.castShadow = true;
+                button.receiveShadow = true;
+                
+                // Button highlight
+                const highlightGeometry = new THREE.BoxGeometry(1.6, 0.45, 0.35);
+                const highlightMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.1
+                });
+                const highlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
+                
+                buttonGroup.add(button);
+                buttonGroup.add(highlight);
+                buttonGroup.position.set(x, y, z);
+                
+                // Component data
+                const component = {
+                    type: 'button',
+                    group: buttonGroup,
+                    button: button,
+                    highlight: highlight,
+                    label: label,
+                    color: color,
+                    originalColor: color,
+                    pressed: false,
+                    onClick: () => {
+                        this.updateStatus(`Button "${label}" clicked!`);
+                        this.animateButtonPress(component);
+                    }
+                };
+                
+                this.components.push(component);
+                this.scene.add(buttonGroup);
+                return component;
+            }
+            
+            animateButtonPress(component) {
+                const button = component.button;
+                const originalScale = button.scale.clone();
+                
+                // Press animation
+                const pressAnim = () => {
+                    button.scale.set(0.95, 0.8, 0.95);
+                    button.material.color.setHex(0xffffff);
+                    setTimeout(() => {
+                        button.scale.copy(originalScale);
+                        button.material.color.setHex(component.originalColor);
+                    }, 150);
+                };
+                
+                pressAnim();
+            }
+            
+            // Toggle Component
+            createToggle(x, y, z, state = false) {
+                const toggleGroup = new THREE.Group();
+                
+                // Toggle base (track)
+                const trackGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.2);
+                trackGeometry.rotateZ(Math.PI / 2);
+                const trackMaterial = new THREE.MeshPhongMaterial({ 
+                    color: state ? 0x4caf50 : 0x757575
+                });
+                const track = new THREE.Mesh(trackGeometry, trackMaterial);
+                track.castShadow = true;
+                
+                // Toggle switch (handle)
+                const switchGeometry = new THREE.SphereGeometry(0.2);
+                const switchMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0xffffff,
+                    shininess: 100
+                });
+                const switchMesh = new THREE.Mesh(switchGeometry, switchMaterial);
+                switchMesh.position.x = state ? 0.4 : -0.4;
+                switchMesh.castShadow = true;
+                
+                toggleGroup.add(track);
+                toggleGroup.add(switchMesh);
+                toggleGroup.position.set(x, y, z);
+                
+                const component = {
+                    type: 'toggle',
+                    group: toggleGroup,
+                    track: track,
+                    switch: switchMesh,
+                    state: state,
+                    onClick: () => {
+                        component.state = !component.state;
+                        this.animateToggle(component);
+                        this.updateStatus(`Toggle ${component.state ? 'ON' : 'OFF'}`);
+                    }
+                };
+                
+                this.components.push(component);
+                this.scene.add(toggleGroup);
+                return component;
+            }
+            
+            animateToggle(component) {
+                const targetX = component.state ? 0.4 : -0.4;
+                const targetColor = component.state ? 0x4caf50 : 0x757575;
+                
+                // Animate switch position
+                const startX = component.switch.position.x;
+                const duration = 300;
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // Easing function
+                    const easedProgress = 1 - Math.pow(1 - progress, 3);
+                    
+                    component.switch.position.x = startX + (targetX - startX) * easedProgress;
+                    component.track.material.color.setHex(
+                        component.state ? 
+                        this.lerpColor(0x757575, targetColor, easedProgress) :
+                        this.lerpColor(0x4caf50, targetColor, easedProgress)
+                    );
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                animate();
+            }
+            
+            // Slider Component
+            createSlider(x, y, z, value = 0.5) {
+                const sliderGroup = new THREE.Group();
+                
+                // Slider track
+                const trackGeometry = new THREE.CylinderGeometry(0.05, 0.05, 2);
+                trackGeometry.rotateZ(Math.PI / 2);
+                const trackMaterial = new THREE.MeshPhongMaterial({ color: 0x424242 });
+                const track = new THREE.Mesh(trackGeometry, trackMaterial);
+                
+                // Slider filled track
+                const filledTrackGeometry = new THREE.CylinderGeometry(0.06, 0.06, 2 * value);
+                filledTrackGeometry.rotateZ(Math.PI / 2);
+                const filledTrackMaterial = new THREE.MeshPhongMaterial({ color: 0x2196f3 });
+                const filledTrack = new THREE.Mesh(filledTrackGeometry, filledTrackMaterial);
+                filledTrack.position.x = -1 + value;
+                
+                // Slider handle
+                const handleGeometry = new THREE.SphereGeometry(0.15);
+                const handleMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0xffffff,
+                    shininess: 100
+                });
+                const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+                handle.position.x = -1 + 2 * value;
+                handle.castShadow = true;
+                
+                sliderGroup.add(track);
+                sliderGroup.add(filledTrack);
+                sliderGroup.add(handle);
+                sliderGroup.position.set(x, y, z);
+                
+                const component = {
+                    type: 'slider',
+                    group: sliderGroup,
+                    track: track,
+                    filledTrack: filledTrack,
+                    handle: handle,
+                    value: value,
+                    isDragging: false,
+                    onClick: (intersect) => {
+                        if (intersect && intersect.object === handle) {
+                            component.isDragging = true;
+                        }
+                    },
+                    onDrag: (mouseX) => {
+                        if (component.isDragging) {
+                            const localX = mouseX - x;
+                            const newValue = Math.max(0, Math.min(1, (localX + 1) / 2));
+                            this.updateSliderValue(component, newValue);
+                        }
+                    },
+                    onRelease: () => {
+                        component.isDragging = false;
+                    }
+                };
+                
+                this.components.push(component);
+                this.scene.add(sliderGroup);
+                return component;
+            }
+            
+            updateSliderValue(component, value) {
+                component.value = value;
+                component.handle.position.x = -1 + 2 * value;
+                
+                // Update filled track
+                component.filledTrack.scale.x = value;
+                component.filledTrack.position.x = -1 + value;
+                
+                this.updateStatus(`Slider value: ${(value * 100).toFixed(0)}%`);
+            }
+            
+            // Utility Methods
+            lerpColor(color1, color2, factor) {
+                const c1 = new THREE.Color(color1);
+                const c2 = new THREE.Color(color2);
+                return c1.lerp(c2, factor).getHex();
+            }
+            
+            updateStatus(message) {
+                document.getElementById('component-status').textContent = message;
+            }
+            
+            // Event Handlers
+            onMouseMove(event) {
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+                
+                // Handle hover effects
+                if (this.hoveredComponent) {
+                    this.resetHover(this.hoveredComponent);
+                    this.hoveredComponent = null;
+                }
+                
+                if (intersects.length > 0) {
+                    const component = this.findComponentByObject(intersects[0].object);
+                    if (component) {
+                        this.applyHover(component);
+                        this.hoveredComponent = component;
+                        document.body.style.cursor = 'pointer';
+                    }
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+                
+                // Handle slider dragging
+                this.components.forEach(component => {
+                    if (component.type === 'slider' && component.isDragging) {
+                        const worldPosition = new THREE.Vector3();
+                        component.group.getWorldPosition(worldPosition);
+                        
+                        const screenPosition = worldPosition.clone();
+                        screenPosition.project(this.camera);
+                        
+                        const mouseWorldX = (this.mouse.x * this.camera.aspect * 4);
+                        component.onDrag(mouseWorldX);
+                    }
+                });
+            }
+            
+            onMouseClick(event) {
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+                
+                if (intersects.length > 0) {
+                    const component = this.findComponentByObject(intersects[0].object);
+                    if (component && component.onClick) {
+                        component.onClick(intersects[0]);
+                    }
+                }
+            }
+            
+            onMouseWheel(event) {
+                this.camera.position.z += event.deltaY * 0.01;
+                this.camera.position.z = Math.max(3, Math.min(15, this.camera.position.z));
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            // Mouse release handler
+            setupMouseRelease() {
+                document.addEventListener('mouseup', () => {
+                    this.components.forEach(component => {
+                        if (component.type === 'slider' && component.onRelease) {
+                            component.onRelease();
+                        }
+                    });
+                });
+            }
+            
+            findComponentByObject(object) {
+                return this.components.find(component => {
+                    const group = component.group;
+                    return group.children.includes(object) || group === object;
+                });
+            }
+            
+            applyHover(component) {
+                switch (component.type) {
+                    case 'button':
+                        component.highlight.material.opacity = 0.3;
+                        component.group.scale.set(1.05, 1.05, 1.05);
+                        break;
+                    case 'toggle':
+                        component.group.scale.set(1.1, 1.1, 1.1);
+                        break;
+                    case 'slider':
+                        component.handle.scale.set(1.2, 1.2, 1.2);
+                        break;
+                }
+            }
+            
+            resetHover(component) {
+                switch (component.type) {
+                    case 'button':
+                        component.highlight.material.opacity = 0.1;
+                        component.group.scale.set(1, 1, 1);
+                        break;
+                    case 'toggle':
+                        component.group.scale.set(1, 1, 1);
+                        break;
+                    case 'slider':
+                        component.handle.scale.set(1, 1, 1);
+                        break;
+                }
+            }
+            
+            // Public API Methods
+            addButton() {
+                const x = (Math.random() - 0.5) * 8;
+                const y = (Math.random() - 0.5) * 6;
+                const colors = [0x4fc3f7, 0x4caf50, 0xff9800, 0xe91e63, 0x9c27b0];
+                const labels = ['Click Me', 'Action', 'Submit', 'OK', 'Next'];
+                
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const label = labels[Math.floor(Math.random() * labels.length)];
+                
+                this.createButton(x, y, 0, label, color);
+                this.updateStatus(`Added new ${label} button`);
+            }
+            
+            addToggle() {
+                const x = (Math.random() - 0.5) * 8;
+                const y = (Math.random() - 0.5) * 6;
+                const state = Math.random() > 0.5;
+                
+                this.createToggle(x, y, 0, state);
+                this.updateStatus(`Added new toggle (${state ? 'ON' : 'OFF'})`);
+            }
+            
+            addSlider() {
+                const x = (Math.random() - 0.5) * 8;
+                const y = (Math.random() - 0.5) * 6;
+                const value = Math.random();
+                
+                this.createSlider(x, y, 0, value);
+                this.updateStatus(`Added new slider (${(value * 100).toFixed(0)}%)`);
+            }
+            
+            resetCamera() {
+                this.camera.position.set(0, 0, 8);
+                this.updateStatus('Camera reset');
+            }
+            
+            toggleAutoRotate() {
+                this.autoRotate = !this.autoRotate;
+                this.updateStatus(`Auto-rotate ${this.autoRotate ? 'enabled' : 'disabled'}`);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Auto-rotate scene
+                if (this.autoRotate) {
+                    this.scene.rotation.y += 0.005;
+                }
+                
+                // Subtle floating animation for components
+                const time = Date.now() * 0.001;
+                this.components.forEach((component, index) => {
+                    component.group.position.y += Math.sin(time + index) * 0.0005;
+                });
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the 3D UI Library
+        const ui3d = new UI3D();
+        ui3d.setupMouseRelease();
+        
+        // Update status on load
+        ui3d.updateStatus('3D UI Components Library loaded successfully!');
+    </script>
+</body>
+</html>
