@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D UI Components Library</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(ellipse at top, #0f0f23 0%, #000000 100%);
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .ui-panel {
+            position: absolute;
+            backdrop-filter: blur(20px);
+            background: rgba(15, 15, 35, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            color: white;
+            z-index: 100;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .ui-panel:hover {
+            background: rgba(15, 15, 35, 0.95);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        #info-panel {
+            top: 24px;
+            left: 24px;
+            padding: 24px;
+            max-width: 320px;
+        }
+        
+        #controls-panel {
+            top: 24px;
+            right: 24px;
+            padding: 20px;
+            min-width: 200px;
+        }
+        
+        #status-panel {
+            bottom: 24px;
+            left: 24px;
+            padding: 16px 20px;
+            min-width: 250px;
+        }
+        
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        p {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .control-section {
+            margin-bottom: 16px;
+        }
+        
+        .control-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .section-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .status-text {
+            font-size: 13px;
+            color: #64ffda;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            background: #64ffda;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .instructions {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .component-counter {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="ui-panel" id="info-panel">
+            <h3>3D UI Components</h3>
+            <p>Interactive component library built with Three.js</p>
+            <div class="component-counter">
+                <span>Buttons: <span id="button-count">0</span></span>
+                <span>Toggles: <span id="toggle-count">0</span></span>
+                <span>Sliders: <span id="slider-count">0</span></span>
+            </div>
+            <div class="instructions">
+                <strong>Controls:</strong><br>
+                • Click to interact<br>
+                • Drag sliders to adjust<br>
+                • Scroll to zoom<br>
+                • Mouse to orbit
+            </div>
+        </div>
+        
+        <div class="ui-panel" id="controls-panel">
+            <div class="control-section">
+                <div class="section-label">Camera</div>
+                <div class="button-group">
+                    <button onclick="ui3d.resetCamera()">Reset View</button>
+                    <button onclick="ui3d.toggleAutoRotate()">Auto Rotate</button>
+                </div>
+            </div>
+            <div class="control-section">
+                <div class="section-label">Add Components</div>
+                <div class="button-group">
+                    <button onclick="ui3d.addButton()">+ Button</button>
+                    <button onclick="ui3d.addToggle()">+ Toggle</button>
+                    <button onclick="ui3d.addSlider()">+ Slider</button>
+                </div>
+            </div>
+            <div class="control-section">
+                <div class="section-label">Actions</div>
+                <div class="button-group">
+                    <button onclick="ui3d.clearAll()">Clear All</button>
+                    <button onclick="ui3d.randomize()">Randomize</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ui-panel" id="status-panel">
+            <div class="status-text">
+                <div class="status-indicator"></div>
+                <span id="status-message">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class UI3D {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true, 
+                    alpha: true,
+                    powerPreference: "high-performance"
+                });
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+                this.components = [];
+                this.hoveredComponent = null;
+                this.autoRotate = true;
+                this.cameraControls = {
+                    mouseDown: false,
+                    mouseX: 0,
+                    mouseY: 0,
+                    targetX: 0,
+                    targetY: 0,
+                    currentX: 0,
+                    currentY: 0
+                };
+                
+                this.init();
+                this.setupLighting();
+                this.createGrid();
+                this.createInitialComponents();
+                this.animate();
+            }
+            
+            init() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000000, 0);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                
+                document.getElementById('container').appendChild(this.renderer.domElement);
+                
+                this.camera.position.set(0, 2, 12);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('resize', () => this.onWindowResize());
+                this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.renderer.domElement.addEventListener('click', (e) => this.onMouseClick(e));
+                this.renderer.domElement.addEventListener('wheel', (e) => this.onMouseWheel(e));
+                this.renderer.domElement.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.renderer.domElement.addEventListener('mouseup', (e) => this.onMouseUp(e));
+                document.addEventListener('mouseup', () => this.onDocumentMouseUp());
+                
+                // Prevent context menu
+                this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+            
+            setupLighting() {
+                // Enhanced lighting setup
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+                
+                // Main directional light
+                const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+                mainLight.position.set(10, 10, 5);
+                mainLight.castShadow = true;
+                mainLight.shadow.mapSize.width = 4096;
+                mainLight.shadow.mapSize.height = 4096;
+                mainLight.shadow.camera.near = 0.1;
+                mainLight.shadow.camera.far = 50;
+                mainLight.shadow.camera.left = -10;
+                mainLight.shadow.camera.right = 10;
+                mainLight.shadow.camera.top = 10;
+                mainLight.shadow.camera.bottom = -10;
+                this.scene.add(mainLight);
+                
+                // Accent lights
+                const accentLight1 = new THREE.PointLight(0x667eea, 0.8, 30);
+                accentLight1.position.set(-8, 4, 3);
+                this.scene.add(accentLight1);
+                
+                const accentLight2 = new THREE.PointLight(0x764ba2, 0.6, 25);
+                accentLight2.position.set(8, -3, 4);
+                this.scene.add(accentLight2);
+                
+                const accentLight3 = new THREE.PointLight(0x64ffda, 0.4, 20);
+                accentLight3.position.set(0, 8, -5);
+                this.scene.add(accentLight3);
+            }
+            
+            createGrid() {
+                // Subtle grid for depth perception
+                const gridGeometry = new THREE.PlaneGeometry(30, 30, 30, 30);
+                const gridMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x222222,
+                    transparent: true,
+                    opacity: 0.1,
+                    wireframe: true
+                });
+                const grid = new THREE.Mesh(gridGeometry, gridMaterial);
+                grid.rotation.x = -Math.PI / 2;
+                grid.position.y = -4;
+                this.scene.add(grid);
+            }
+            
+            createInitialComponents() {
+                // Create a nice initial layout
+                this.createButton(-4, 1, 0, 'Primary', 0x667eea);
+                this.createButton(0, 1, 0, 'Success', 0x4caf50);
+                this.createButton(4, 1, 0, 'Accent', 0x764ba2);
+                
+                this.createToggle(-3, -1, 0, true);
+                this.createToggle(0, -1, 0, false);
+                this.createToggle(3, -1, 0, true);
+                
+                this.createSlider(-4, -3, 0, 0.8);
+                this.createSlider(0, -3, 0, 0.4);
+                this.createSlider(4, -3, 0, 0.9);
+                
+                this.updateComponentCounts();
+            }
+            
+            createButton(x, y, z, label = 'Button', color = 0x667eea) {
+                const buttonGroup = new THREE.Group();
+                
+                // Enhanced button geometry with rounded edges
+                const buttonGeometry = new THREE.BoxGeometry(2, 0.6, 0.4);
+                // Round the edges by adding more geometry detail
+                const buttonMaterial = new THREE.MeshPhysicalMaterial({
+                    color: color,
+                    metalness: 0.1,
+                    roughness: 0.2,
+                    clearcoat: 0.8,
+                    clearcoatRoughness: 0.2
+                });
+                const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
+                button.castShadow = true;
+                button.receiveShadow = true;
+                
+                // Button glow effect
+                const glowGeometry = new THREE.BoxGeometry(2.1, 0.65, 0.45);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.2
+                });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                
+                // Button text plane (simulated)
+                const textGeometry = new THREE.PlaneGeometry(1.8, 0.3);
+                const textMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const textPlane = new THREE.Mesh(textGeometry, textMaterial);
+                textPlane.position.z = 0.21;
+                
+                buttonGroup.add(glow);
+                buttonGroup.add(button);
+                buttonGroup.add(textPlane);
+                buttonGroup.position.set(x, y, z);
+                
+                const component = {
+                    type: 'button',
+                    group: buttonGroup,
+                    button: button,
+                    glow: glow,
+                    textPlane: textPlane,
+                    label: label,
+                    color: color,
+                    originalColor: color,
+                    isPressed: false,
+                    onClick: () => this.handleButtonClick(component)
+                };
+                
+                this.components.push(component);
+                this.scene.add(buttonGroup);
+                return component;
+            }
+            
+            handleButtonClick(component) {
+                this.updateStatus(`${component.label} activated`);
+                this.animateButtonPress(component);
+            }
+            
+            animateButtonPress(component) {
+                if (component.isPressed) return;
+                component.isPressed = true;
+                
+                const originalY = component.group.position.y;
+                const pressDepth = 0.1;
+                
+                // Press down
+                const pressDown = () => {
+                    component.group.position.y = originalY - pressDepth;
+                    component.button.material.emissive.setHex(0x333333);
+                    component.glow.material.opacity = 0.6;
+                };
+                
+                // Release
+                const release = () => {
+                    component.group.position.y = originalY;
+                    component.button.material.emissive.setHex(0x000000);
+                    component.glow.material.opacity = 0.2;
+                    component.isPressed = false;
+                };
+                
+                pressDown();
+                setTimeout(release, 150);
+            }
+            
+            createToggle(x, y, z, state = false) {
+                const toggleGroup = new THREE.Group();
+                
+                // Enhanced toggle design
+                const trackGeometry = new THREE.CapsuleGeometry(0.2, 1.6, 4, 8);
+                trackGeometry.rotateZ(Math.PI / 2);
+                const trackMaterial = new THREE.MeshPhysicalMaterial({
+                    color: state ? 0x4caf50 : 0x555555,
+                    metalness: 0.1,
+                    roughness: 0.3,
+                    clearcoat: 0.5
+                });
+                const track = new THREE.Mesh(trackGeometry, trackMaterial);
+                track.castShadow = true;
+                track.receiveShadow = true;
+                
+                // Toggle handle with better design
+                const handleGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+                const handleMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff,
+                    metalness: 0.1,
+                    roughness: 0.1,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.1
+                });
+                const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+                handle.position.x = state ? 0.5 : -0.5;
+                handle.castShadow = true;
+                
+                // Handle glow
+                const handleGlowGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const handleGlowMaterial = new THREE.MeshBasicMaterial({
+                    color: state ? 0x4caf50 : 0x555555,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const handleGlow = new THREE.Mesh(handleGlowGeometry, handleGlowMaterial);
+                handleGlow.position.copy(handle.position);
+                
+                toggleGroup.add(track);
+                toggleGroup.add(handleGlow);
+                toggleGroup.add(handle);
+                toggleGroup.position.set(x, y, z);
+                
+                const component = {
+                    type: 'toggle',
+                    group: toggleGroup,
+                    track: track,
+                    handle: handle,
+                    handleGlow: handleGlow,
+                    state: state,
+                    isAnimating: false,
+                    onClick: () => this.handleToggleClick(component)
+                };
+                
+                this.components.push(component);
+                this.scene.add(toggleGroup);
+                return component;
+            }
+            
+            handleToggleClick(component) {
+                if (component.isAnimating) return;
+                
+                component.state = !component.state;
+                this.updateStatus(`Toggle ${component.state ? 'ON' : 'OFF'}`);
+                this.animateToggle(component);
+            }
+            
+            animateToggle(component) {
+                component.isAnimating = true;
+                const targetX = component.state ? 0.5 : -0.5;
+                const targetColor = component.state ? 0x4caf50 : 0x555555;
+                
+                const startX = component.handle.position.x;
+                const duration = 400;
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const easedProgress = this.easeOutElastic(progress);
+                    
+                    component.handle.position.x = startX + (targetX - startX) * easedProgress;
+                    component.handleGlow.position.x = component.handle.position.x;
+                    
+                    // Color transition
+                    const currentColor = component.state ? 
+                        this.lerpColor(0x555555, targetColor, progress) :
+                        this.lerpColor(0x4caf50, targetColor, progress);
+                    
+                    component.track.material.color.setHex(currentColor);
+                    component.handleGlow.material.color.setHex(currentColor);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        component.isAnimating = false;
+                    }
+                };
+                
+                animate();
+            }
+            
+            createSlider(x, y, z, value = 0.5) {
+                const sliderGroup = new THREE.Group();
+                
+                // Enhanced slider track
+                const trackGeometry = new THREE.CapsuleGeometry(0.08, 3, 4, 8);
+                trackGeometry.rotateZ(Math.PI / 2);
+                const trackMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x333333,
+                    metalness: 0.2,
+                    roughness: 0.4
+                });
+                const track = new THREE.Mesh(trackGeometry, trackMaterial);
+                track.castShadow = true;
+                track.receiveShadow = true;
+                
+                // Progress track
+                const progressGeometry = new THREE.CapsuleGeometry(0.09, 3 * value, 4, 8);
+                progressGeometry.rotateZ(Math.PI / 2);
+                const progressMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x667eea,
+                    metalness: 0.1,
+                    roughness: 0.2,
+                    emissive: 0x111133
+                });
+                const progress = new THREE.Mesh(progressGeometry, progressMaterial);
+                progress.position.x = -1.5 + (1.5 * value);
+                
+                // Enhanced handle
+                const handleGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+                const handleMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff,
+                    metalness: 0.1,
+                    roughness: 0.1,
+                    clearcoat: 1.0
+                });
+                const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+                handle.position.x = -1.5 + 3 * value;
+                handle.castShadow = true;
+                
+                // Handle glow
+                const handleGlowGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+                const handleGlowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x667eea,
+                    transparent: true,
+                    opacity: 0.4
+                });
+                const handleGlow = new THREE.Mesh(handleGlowGeometry, handleGlowMaterial);
+                handleGlow.position.copy(handle.position);
+                
+                sliderGroup.add(track);
+                sliderGroup.add(progress);
+                sliderGroup.add(handleGlow);
+                sliderGroup.add(handle);
+                sliderGroup.position.set(x, y, z);
+                
+                const component = {
+                    type: 'slider',
+                    group: sliderGroup,
+                    track: track,
+                    progress: progress,
+                    handle: handle,
+                    handleGlow: handleGlow,
+                    value: value,
+                    isDragging: false,
+                    onClick: (intersect) => {
+                        if (intersect && (intersect.object === handle || intersect.object === track)) {
+                            component.isDragging = true;
+                            this.updateStatus(`Adjusting slider: ${Math.round(component.value * 100)}%`);
+                        }
+                    },
+                    onDrag: (newValue) => {
+                        this.updateSliderValue(component, newValue);
+                    },
+                    onRelease: () => {
+                        component.isDragging = false;
+                    }
+                };
+                
+                this.components.push(component);
+                this.scene.add(sliderGroup);
+                return component;
+            }
+            
+            updateSliderValue(component, value) {
+                value = Math.max(0, Math.min(1, value));
+                component.value = value;
+                
+                // Update handle position
+                component.handle.position.x = -1.5 + 3 * value;
+                component.handleGlow.position.x = component.handle.position.x;
+                
+                // Update progress track
+                const newGeometry = new THREE.CapsuleGeometry(0.09, Math.max(0.1, 3 * value), 4, 8);
+                newGeometry.rotateZ(Math.PI / 2);
+                component.progress.geometry.dispose();
+                component.progress.geometry = newGeometry;
+                component.progress.position.x = -1.5 + (1.5 * value);
+                
+                this.updateStatus(`Slider: ${Math.round(value * 100)}%`);
+            }
+            
+            // Event Handlers
+            onMouseDown(event) {
+                this.cameraControls.mouseDown = true;
+                this.cameraControls.mouseX = event.clientX;
+                this.cameraControls.mouseY = event.clientY;
+            }
+            
+            onMouseUp(event) {
+                this.cameraControls.mouseDown = false;
+            }
+            
+            onDocumentMouseUp() {
+                this.components.forEach(component => {
+                    if (component.type === 'slider' && component.onRelease) {
+                        component.onRelease();
+                    }
+                });
+            }
+            
+            onMouseMove(event) {
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // Camera orbit controls
+                if (this.cameraControls.mouseDown && !this.hoveredComponent) {
+                    const deltaX = event.clientX - this.cameraControls.mouseX;
+                    const deltaY = event.clientY - this.cameraControls.mouseY;
+                    
+                    this.cameraControls.targetX += deltaX * 0.01;
+                    this.cameraControls.targetY += deltaY * 0.01;
+                    
+                    this.cameraControls.mouseX = event.clientX;
+                    this.cameraControls.mouseY = event.clientY;
+                }
+                
+                // Raycasting for interactions
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+                
+                // Handle hover effects
+                if (this.hoveredComponent) {
+                    this.resetHover(this.hoveredComponent);
+                    this.hoveredComponent = null;
+                }
+                
+                if (intersects.length > 0) {
+                    const component = this.findComponentByObject(intersects[0].object);
+                    if (component && !this.cameraControls.mouseDown) {
+                        this.applyHover(component);
+                        this.hoveredComponent = component;
+                        document.body.style.cursor = 'pointer';
+                    }
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+                
+                // Handle slider dragging
+                this.components.forEach(component => {
+                    if (component.type === 'slider' && component.isDragging) {
+                        const rect = this.renderer.domElement.getBoundingClientRect();
+                        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                        
+                        // Convert screen space to world space for slider
+                        const worldPosition = new THREE.Vector3();
+                        component.group.getWorldPosition(worldPosition);
+                        worldPosition.project(this.camera);
+                        
+                        const sliderRange = 3; // Total slider length
+                        const newValue = (x - worldPosition.x + 1) / (2 / sliderRange) + 0.5;
+                        component.onDrag(newValue);
+                    }
+                });
+            }
+            
+            onMouseClick(event) {
+                if (this.cameraControls.mouseDown) return; // Don't click if we were dragging camera
+                
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+                
+                if (intersects.length > 0) {
+                    const component = this.findComponentByObject(intersects[0].object);
+                    if (component && component.onClick) {
+                        component.onClick(intersects[0]);
+                    }
+                }
+            }
+            
+            onMouseWheel(event) {
+                event.preventDefault();
+                this.camera.position.z += event.deltaY * 0.01;
+                this.camera.position.z = Math.max(5, Math.min(20, this.camera.position.z));
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            // Utility methods
+            findComponentByObject(object) {
+                return this.components.find(component => {
+                    const group = component.group;
+                    return group.children.includes(object) || group === object;
+                });
+            }
+            
+            applyHover(component) {
+                switch (component.type) {
+                    case 'button':
+                        component.group.scale.set(1.05, 1.05, 1.05);
+                        component.glow.material.opacity = 0.5;
+                        break;
+                    case 'toggle':
+                        component.group.scale.set(1.1, 1.1, 1.1);
+                        component.handleGlow.material.opacity = 0.6;
+                        break;
+                    case 'slider':
+                        component.handle.scale.set(1.2, 1.2, 1.2);
+                        component.handleGlow.material.opacity = 0.7;
+                        break;
+                }
+            }
+            
+            resetHover(component) {
+                switch (component.type) {
+                    case 'button':
+                        component.group.scale.set(1, 1, 1);
+                        component.glow.material.opacity = 0.2;
+                        break;
+                    case 'toggle':
+                        component.group.scale.set(1, 1, 1);
+                        component.handleGlow.material.opacity = 0.3;
+                        break;
+                    case 'slider':
+                        component.handle.scale.set(1, 1, 1);
+                        component.handleGlow.material.opacity = 0.4;
+                        break;
+                }
+            }
+            
+            // Easing functions
+            easeOutElastic(t) {
+                const c4 = (2 * Math.PI) / 3;
+                return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+            }
+            
+            easeOutBack(t) {
+                const c1 = 1.70158;
+                const c3 = c1 + 1;
+                return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+            }
+            
+            lerpColor(color1, color2, factor) {
+                const c1 = new THREE.Color(color1);
+                const c2 = new THREE.Color(color2);
+                return c1.lerp(c2, factor).getHex();
+            }
+            
+            updateStatus(message) {
+                document.getElementById('status-message').textContent = message;
+            }
+            
+            updateComponentCounts() {
+                const counts = { button: 0, toggle: 0, slider: 0 };
+                this.components.forEach(comp => counts[comp.type]++);
+                
+                document.getElementById('button-count').textContent = counts.button;
+                document.getElementById('toggle-count').textContent = counts.toggle;
+                document.getElementById('slider-count').textContent = counts.slider;
+            }
+            
+            // Public API Methods
+            addButton() {
+                const positions = this.generateRandomPosition();
+                const colors = [0x667eea, 0x4caf50, 0xff5722, 0xe91e63, 0x9c27b0, 0x00bcd4, 0xff9800];
+                const labels = ['Action', 'Submit', 'Confirm', 'Execute', 'Process', 'Launch', 'Create'];
+                
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const label = labels[Math.floor(Math.random() * labels.length)];
+                
+                this.createButton(positions.x, positions.y, positions.z, label, color);
+                this.updateComponentCounts();
+                this.updateStatus(`Added ${label} button`);
+            }
+            
+            addToggle() {
+                const positions = this.generateRandomPosition();
+                const state = Math.random() > 0.5;
+                
+                this.createToggle(positions.x, positions.y, positions.z, state);
+                this.updateComponentCounts();
+                this.updateStatus(`Added toggle (${state ? 'ON' : 'OFF'})`);
+            }
+            
+            addSlider() {
+                const positions = this.generateRandomPosition();
+                const value = Math.random();
+                
+                this.createSlider(positions.x, positions.y, positions.z, value);
+                this.updateComponentCounts();
+                this.updateStatus(`Added slider (${Math.round(value * 100)}%)`);
+            }
+            
+            generateRandomPosition() {
+                const radius = 6;
+                const angle = Math.random() * Math.PI * 2;
+                const height = (Math.random() - 0.5) * 4;
+                
+                return {
+                    x: Math.cos(angle) * radius,
+                    y: height,
+                    z: Math.sin(angle) * radius * 0.3
+                };
+            }
+            
+            clearAll() {
+                this.components.forEach(component => {
+                    this.scene.remove(component.group);
+                    // Dispose of geometries and materials
+                    component.group.traverse((child) => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(material => material.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    });
+                });
+                
+                this.components = [];
+                this.updateComponentCounts();
+                this.updateStatus('All components cleared');
+            }
+            
+            randomize() {
+                // Randomly animate all components
+                this.components.forEach((component, index) => {
+                    setTimeout(() => {
+                        const newPos = this.generateRandomPosition();
+                        const duration = 1000 + Math.random() * 1000;
+                        
+                        this.animateComponentTo(component, newPos, duration);
+                    }, index * 100);
+                });
+                
+                this.updateStatus('Randomizing component positions');
+            }
+            
+            animateComponentTo(component, targetPos, duration = 1000) {
+                const startPos = component.group.position.clone();
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const easedProgress = this.easeOutBack(progress);
+                    
+                    component.group.position.lerpVectors(startPos, targetPos, easedProgress);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                animate();
+            }
+            
+            resetCamera() {
+                const targetPos = new THREE.Vector3(0, 2, 12);
+                const startPos = this.camera.position.clone();
+                const duration = 1000;
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const easedProgress = this.easeOutBack(progress);
+                    
+                    this.camera.position.lerpVectors(startPos, targetPos, easedProgress);
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                animate();
+                this.updateStatus('Camera reset');
+            }
+            
+            toggleAutoRotate() {
+                this.autoRotate = !this.autoRotate;
+                this.updateStatus(`Auto-rotate ${this.autoRotate ? 'enabled' : 'disabled'}`);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Smooth camera orbit
+                this.cameraControls.currentX += (this.cameraControls.targetX - this.cameraControls.currentX) * 0.05;
+                this.cameraControls.currentY += (this.cameraControls.targetY - this.cameraControls.currentY) * 0.05;
+                
+                if (!this.cameraControls.mouseDown) {
+                    const radius = this.camera.position.length();
+                    const phi = Math.PI * 0.5 - this.cameraControls.currentY;
+                    const theta = this.cameraControls.currentX;
+                    
+                    this.camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
+                    this.camera.position.y = radius * Math.cos(phi);
+                    this.camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
+                    this.camera.lookAt(0, 0, 0);
+                }
+                
+                // Auto-rotation
+                if (this.autoRotate && !this.cameraControls.mouseDown) {
+                    this.cameraControls.targetX += 0.002;
+                }
+                
+                // Floating animation for components
+                const time = Date.now() * 0.001;
+                this.components.forEach((component, index) => {
+                    const floatOffset = Math.sin(time * 0.8 + index * 0.5) * 0.02;
+                    component.group.position.y += floatOffset * 0.1;
+                    
+                    // Subtle rotation for variety
+                    if (component.type === 'button') {
+                        component.group.rotation.z = Math.sin(time * 0.5 + index) * 0.02;
+                    }
+                });
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the 3D UI Library
+        const ui3d = new UI3D();
+        
+        // Set initial status
+        setTimeout(() => {
+            ui3d.updateStatus('3D UI Components ready - Start interacting!');
+        }, 1000);
+    </script>
+</body>
+</html>
