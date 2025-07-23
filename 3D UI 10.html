@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced 3D UI Components Library</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 220px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-label {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .value-display {
+            font-size: 14px;
+            color: #00ff88;
+            font-weight: 600;
+            background: rgba(0, 255, 136, 0.1);
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .value-display:hover {
+            background: rgba(0, 255, 136, 0.2);
+            transform: translateY(-2px);
+        }
+
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            line-height: 1.6;
+            max-width: 300px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .highlight {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .component-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            min-width: 180px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-item:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+
+        #fps-display {
+            position: absolute;
+            top: 20px;
+            right: 220px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        #title-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        #title-overlay h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, #00ff88, #00aaff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            margin-bottom: 1rem;
+            letter-spacing: 2px;
+        }
+
+        #title-overlay p {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00ff88;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <!-- Particles will be added here dynamically -->
+        
+        <div id="title-overlay">
+            <h1>3D UI COMPONENTS</h1>
+            <p>Professional-grade interactive components with physics-based animations and particle effects</p>
+        </div>
+        
+        <div id="ui-overlay">
+            <div class="control-panel">
+                <div class="control-group">
+                    <div class="control-label">Camera Angle</div>
+                    <div class="value-display" id="camera-angle">Auto</div>
+                </div>
+                <div class="control-group">
+                    <div class="control-label">Animation Speed</div>
+                    <div class="value-display" id="anim-speed">1.0x</div>
+                </div>
+                <div class="control-group">
+                    <div class="control-label">Active Components</div>
+                    <div class="value-display" id="active-count">12</div>
+                </div>
+                <div class="control-group">
+                    <div class="control-label">Physics Mode</div>
+                    <div class="value-display" id="physics-mode">Enabled</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="component-status">
+            <div class="status-item">
+                <span>3D Button</span>
+                <span id="status-button" class="highlight">Active</span>
+            </div>
+            <div class="status-item">
+                <span>Slider</span>
+                <span id="status-slider" class="highlight">0.60</span>
+            </div>
+            <div class="status-item">
+                <span>Toggle Switch</span>
+                <span id="status-toggle" class="highlight">On</span>
+            </div>
+            <div class="status-item">
+                <span>Knob</span>
+                <span id="status-knob" class="highlight">0.30</span>
+            </div>
+            <div class="status-item">
+                <span>Progress Bar</span>
+                <span id="status-progress" class="highlight">70%</span>
+            </div>
+            <div class="status-item">
+                <span>Card Panel</span>
+                <span id="status-card" class="highlight">Ready</span>
+            </div>
+            <div class="status-item">
+                <span>Floating Menu</span>
+                <span id="status-menu" class="highlight">Orbiting</span>
+            </div>
+        </div>
+
+        <div id="fps-display">FPS: 60</div>
+
+        <div id="info">
+            <div class="highlight">ADVANCED 3D UI LIBRARY</div>
+            <br>
+            <strong>Cutting-Edge Features:</strong><br>
+            • Physics-based interactions and animations<br>
+            • Real-time particle effects on interaction<br>
+            • Dynamic component status tracking<br>
+            • Camera perspective controls<br>
+            • Professional material design<br>
+            <br>
+            <strong>Powered by:</strong><br>
+            • Three.js r128<br>
+            • Custom physics engine<br>
+            • Particle system<br>
+            <br>
+            <div class="highlight">Click components to interact</div>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced 3D UI Components Library
+        class UI3DLibrary {
+            constructor(container) {
+                this.container = container;
+                this.components = new Map();
+                this.materials = {};
+                this.animations = [];
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+                this.selectedObject = null;
+                this.isDragging = false;
+                this.fps = 0;
+                this.fpsCount = 0;
+                this.fpsTime = 0;
+                this.cameraMode = 'auto';
+                this.physicsEnabled = true;
+                this.particles = [];
+                this.demoComponents = {};
+                
+                this.init();
+                this.setupEventListeners();
+                this.createComponents();
+                this.animate();
+            }
+
+            init() {
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0a0a);
+                
+                // Camera setup
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 0, 8);
+                
+                // Renderer setup
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                this.container.appendChild(this.renderer.domElement);
+
+                // Lighting setup
+                this.setupLighting();
+                this.createMaterials();
+            }
+
+            setupLighting() {
+                // Main light
+                const mainLight = new THREE.DirectionalLight(0x00ff88, 1.2);
+                mainLight.position.set(10, 10, 5);
+                mainLight.castShadow = true;
+                mainLight.shadow.mapSize.width = 2048;
+                mainLight.shadow.mapSize.height = 2048;
+                this.scene.add(mainLight);
+
+                // Fill light
+                const fillLight = new THREE.DirectionalLight(0x4444ff, 0.6);
+                fillLight.position.set(-10, -10, 5);
+                this.scene.add(fillLight);
+
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0x222244, 0.4);
+                this.scene.add(ambientLight);
+
+                // Rim light
+                const rimLight = new THREE.DirectionalLight(0xff4444, 0.8);
+                rimLight.position.set(0, 0, -10);
+                this.scene.add(rimLight);
+            }
+
+            createMaterials() {
+                // Primary button material
+                this.materials.primary = new THREE.MeshPhysicalMaterial({
+                    color: 0x00ff88,
+                    metalness: 0.7,
+                    roughness: 0.2,
+                    emissive: 0x001122,
+                    emissiveIntensity: 0.1
+                });
+
+                // Secondary material
+                this.materials.secondary = new THREE.MeshPhysicalMaterial({
+                    color: 0x4444ff,
+                    metalness: 0.6,
+                    roughness: 0.3,
+                    emissive: 0x000022,
+                    emissiveIntensity: 0.05
+                });
+
+                // Danger material
+                this.materials.danger = new THREE.MeshPhysicalMaterial({
+                    color: 0xff4444,
+                    metalness: 0.8,
+                    roughness: 0.1,
+                    emissive: 0x220000,
+                    emissiveIntensity: 0.1
+                });
+
+                // Glass material
+                this.materials.glass = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff,
+                    metalness: 0,
+                    roughness: 0,
+                    transmission: 0.9,
+                    transparent: true,
+                    opacity: 0.8
+                });
+
+                // Panel material
+                this.materials.panel = new THREE.MeshPhysicalMaterial({
+                    color: 0x333333,
+                    metalness: 0.9,
+                    roughness: 0.1,
+                    emissive: 0x111111,
+                    emissiveIntensity: 0.05
+                });
+            }
+
+            // Base Component Class
+            createComponent(type, options = {}) {
+                const component = {
+                    type,
+                    mesh: null,
+                    originalPosition: null,
+                    originalScale: null,
+                    interactive: options.interactive !== false,
+                    value: options.value || 0,
+                    callback: options.callback || null,
+                    ...options
+                };
+
+                switch (type) {
+                    case 'button':
+                        return this.createButton(component);
+                    case 'slider':
+                        return this.createSlider(component);
+                    case 'toggle':
+                        return this.createToggle(component);
+                    case 'knob':
+                        return this.createKnob(component);
+                    case 'progress':
+                        return this.createProgressBar(component);
+                    case 'card':
+                        return this.createCard(component);
+                    case 'menu':
+                        return this.createFloatingMenu(component);
+                }
+            }
+
+            createButton(options) {
+                const geometry = new THREE.BoxGeometry(1.5, 0.5, 0.3);
+                const material = this.materials[options.style] || this.materials.primary;
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                mesh.position.copy(options.position || new THREE.Vector3(0, 0, 0));
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.userData = { 
+                    component: 'button',
+                    originalScale: mesh.scale.clone(),
+                    originalPosition: mesh.position.clone(),
+                    callback: options.callback,
+                    name: options.name || 'button'
+                };
+
+                this.scene.add(mesh);
+                return mesh;
+            }
+
+            createSlider(options) {
+                const group = new THREE.Group();
+                
+                // Track
+                const trackGeometry = new THREE.BoxGeometry(2, 0.1, 0.1);
+                const trackMesh = new THREE.Mesh(trackGeometry, this.materials.panel);
+                group.add(trackMesh);
+
+                // Handle
+                const handleGeometry = new THREE.BoxGeometry(0.2, 0.3, 0.3);
+                const handleMesh = new THREE.Mesh(handleGeometry, this.materials.primary);
+                handleMesh.position.set(-0.8 + (options.value || 0) * 1.6, 0.1, 0);
+                handleMesh.userData = { 
+                    component: 'slider-handle',
+                    slider: group,
+                    callback: options.callback,
+                    name: options.name || 'slider'
+                };
+                group.add(handleMesh);
+
+                group.position.copy(options.position || new THREE.Vector3(0, 0, 0));
+                group.userData = { 
+                    component: 'slider', 
+                    value: options.value || 0,
+                    name: options.name || 'slider'
+                };
+
+                this.scene.add(group);
+                return group;
+            }
+
+            createToggle(options) {
+                const group = new THREE.Group();
+                
+                // Base
+                const baseGeometry = new THREE.BoxGeometry(1, 0.4, 0.4);
+                const baseMesh = new THREE.Mesh(baseGeometry, this.materials.panel);
+                group.add(baseMesh);
+
+                // Switch
+                const switchGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+                const switchMesh = new THREE.Mesh(switchGeometry, this.materials.primary);
+                const isOn = options.value || false;
+                switchMesh.position.set(isOn ? 0.25 : -0.25, 0.1, 0);
+                switchMesh.userData = { 
+                    component: 'toggle-switch',
+                    toggle: group,
+                    callback: options.callback,
+                    name: options.name || 'toggle'
+                };
+                group.add(switchMesh);
+
+                group.position.copy(options.position || new THREE.Vector3(0, 0, 0));
+                group.userData = { 
+                    component: 'toggle', 
+                    value: isOn,
+                    name: options.name || 'toggle'
+                };
+
+                this.scene.add(group);
+                return group;
+            }
+
+            createKnob(options) {
+                const group = new THREE.Group();
+                
+                // Base
+                const baseGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.2, 32);
+                const baseMesh = new THREE.Mesh(baseGeometry, this.materials.panel);
+                group.add(baseMesh);
+
+                // Knob
+                const knobGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.15, 32);
+                const knobMesh = new THREE.Mesh(knobGeometry, this.materials.primary);
+                knobMesh.position.y = 0.1;
+                knobMesh.userData = { 
+                    component: 'knob-handle',
+                    knob: group,
+                    callback: options.callback,
+                    name: options.name || 'knob'
+                };
+                group.add(knobMesh);
+
+                // Indicator
+                const indicatorGeometry = new THREE.BoxGeometry(0.05, 0.1, 0.1);
+                const indicatorMesh = new THREE.Mesh(indicatorGeometry, this.materials.danger);
+                indicatorMesh.position.set(0.2, 0.15, 0);
+                knobMesh.add(indicatorMesh);
+
+                group.position.copy(options.position || new THREE.Vector3(0, 0, 0));
+                group.userData = { 
+                    component: 'knob', 
+                    value: options.value || 0,
+                    name: options.name || 'knob'
+                };
+
+                this.scene.add(group);
+                return group;
+            }
+
+            createProgressBar(options) {
+                const group = new THREE.Group();
+                
+                // Background
+                const bgGeometry = new THREE.BoxGeometry(2.5, 0.3, 0.1);
+                const bgMesh = new THREE.Mesh(bgGeometry, this.materials.panel);
+                group.add(bgMesh);
+
+                // Progress fill
+                const progress = options.value || 0;
+                const fillGeometry = new THREE.BoxGeometry(2.4 * progress, 0.25, 0.08);
+                const fillMesh = new THREE.Mesh(fillGeometry, this.materials.primary);
+                fillMesh.position.set(-1.2 + (1.2 * progress), 0, 0.01);
+                fillMesh.userData = { 
+                    component: 'progress-fill',
+                    name: options.name || 'progress'
+                };
+                group.add(fillMesh);
+
+                group.position.copy(options.position || new THREE.Vector3(0, 0, 0));
+                group.userData = { 
+                    component: 'progress',
+                    value: progress,
+                    fillMesh: fillMesh,
+                    loading: options.loading || false,
+                    name: options.name || 'progress'
+                };
+
+                this.scene.add(group);
+                return group;
+            }
+
+            createCard(options) {
+                const group = new THREE.Group();
+                
+                // Main card
+                const cardGeometry = new THREE.BoxGeometry(1.8, 2.2, 0.1);
+                const cardMesh = new THREE.Mesh(cardGeometry, this.materials.glass);
+                cardMesh.userData = { 
+                    component: 'card',
+                    originalPosition: cardMesh.position.clone(),
+                    callback: options.callback,
+                    name: options.name || 'card'
+                };
+                group.add(cardMesh);
+
+                // Header
+                const headerGeometry = new THREE.BoxGeometry(1.6, 0.3, 0.05);
+                const headerMesh = new THREE.Mesh(headerGeometry, this.materials.primary);
+                headerMesh.position.set(0, 0.8, 0.05);
+                group.add(headerMesh);
+
+                // Content
+                const contentGeometry = new THREE.BoxGeometry(1.6, 1.2, 0.05);
+                const contentMesh = new THREE.Mesh(contentGeometry, this.materials.panel);
+                contentMesh.position.set(0, -0.3, 0.05);
+                group.add(contentMesh);
+
+                group.position.copy(options.position || new THREE.Vector3(0, 0, 0));
+                group.userData = { 
+                    component: 'card',
+                    name: options.name || 'card'
+                };
+
+                this.scene.add(group);
+                return group;
+            }
+
+            createFloatingMenu(options) {
+                const group = new THREE.Group();
+                const menuItems = [];
+                
+                for (let i = 0; i < 6; i++) {
+                    const itemGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+                    const itemMaterial = new THREE.MeshPhysicalMaterial({
+                        color: new THREE.Color().setHSL(i / 6, 0.8, 0.6),
+                        metalness: 0.7,
+                        roughness: 0.2,
+                        emissive: new THREE.Color().setHSL(i / 6, 0.8, 0.2),
+                        emissiveIntensity: 0.1
+                    });
+                    const itemMesh = new THREE.Mesh(itemGeometry, itemMaterial);
+                    
+                    const angle = (i / 6) * Math.PI * 2;
+                    const radius = 1.2;
+                    itemMesh.position.set(
+                        Math.cos(angle) * radius,
+                        Math.sin(angle) * radius,
+                        0
+                    );
+                    
+                    itemMesh.userData = { 
+                        component: 'menu-item',
+                        angle: angle,
+                        radius: radius,
+                        callback: options.callback,
+                        name: options.name || `menu-item-${i}`
+                    };
+                    
+                    group.add(itemMesh);
+                    menuItems.push(itemMesh);
+                }
+
+                group.position.copy(options.position || new THREE.Vector3(0, 0, 0));
+                group.userData = { 
+                    component: 'floating-menu',
+                    items: menuItems,
+                    rotation: 0,
+                    name: options.name || 'menu'
+                };
+
+                this.scene.add(group);
+                return group;
+            }
+
+            setupEventListeners() {
+                this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.renderer.domElement.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.renderer.domElement.addEventListener('mouseup', (e) => this.onMouseUp(e));
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                // Add physics toggle
+                document.getElementById('physics-mode').addEventListener('click', () => {
+                    this.physicsEnabled = !this.physicsEnabled;
+                    document.getElementById('physics-mode').textContent = 
+                        this.physicsEnabled ? 'Enabled' : 'Disabled';
+                });
+                
+                // Add camera mode toggle
+                document.getElementById('camera-angle').addEventListener('click', () => {
+                    this.cameraMode = this.cameraMode === 'auto' ? 'manual' : 'auto';
+                    document.getElementById('camera-angle').textContent = 
+                        this.cameraMode === 'auto' ? 'Auto' : 'Manual';
+                });
+            }
+
+            onMouseMove(event) {
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+                // Handle dragging
+                if (this.isDragging && this.selectedObject) {
+                    this.handleDrag(intersects);
+                } else {
+                    this.handleHover(intersects);
+                }
+            }
+
+            onMouseDown(event) {
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+                if (intersects.length > 0) {
+                    const object = intersects[0].object;
+                    const userData = object.userData;
+
+                    if (userData.component) {
+                        this.selectedObject = object;
+                        this.isDragging = true;
+                        this.handleClick(object);
+                        this.createParticleEffect(intersects[0].point);
+                    }
+                }
+            }
+
+            onMouseUp(event) {
+                this.isDragging = false;
+                this.selectedObject = null;
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            handleClick(object) {
+                const userData = object.userData;
+                
+                switch (userData.component) {
+                    case 'button':
+                        this.animateButtonPress(object);
+                        document.getElementById('status-button').textContent = 'Pressed';
+                        setTimeout(() => {
+                            document.getElementById('status-button').textContent = 'Active';
+                        }, 500);
+                        break;
+                    case 'toggle-switch':
+                        this.animateToggle(userData.toggle);
+                        document.getElementById('status-toggle').textContent = 
+                            userData.toggle.userData.value ? 'Off' : 'On';
+                        break;
+                    case 'card':
+                        this.animateCard(object);
+                        document.getElementById('status-card').textContent = 'Selected';
+                        setTimeout(() => {
+                            document.getElementById('status-card').textContent = 'Ready';
+                        }, 1000);
+                        break;
+                    case 'menu-item':
+                        document.getElementById('status-menu').textContent = 'Selected';
+                        setTimeout(() => {
+                            document.getElementById('status-menu').textContent = 'Orbiting';
+                        }, 1000);
+                        break;
+                }
+
+                if (userData.callback) {
+                    userData.callback(object);
+                }
+            }
+
+            handleDrag(intersects) {
+                if (!this.selectedObject) return;
+                
+                const userData = this.selectedObject.userData;
+                
+                if (userData.component === 'slider-handle') {
+                    this.updateSlider(this.selectedObject, intersects);
+                    document.getElementById('status-slider').textContent = 
+                        userData.slider.userData.value.toFixed(2);
+                } else if (userData.component === 'knob-handle') {
+                    this.updateKnob(this.selectedObject, intersects);
+                    document.getElementById('status-knob').textContent = 
+                        userData.knob.userData.value.toFixed(2);
+                }
+            }
+
+            handleHover(intersects) {
+                // Reset all objects
+                this.scene.traverse((child) => {
+                    if (child.userData.component && child.userData.originalScale) {
+                        child.scale.copy(child.userData.originalScale);
+                    }
+                });
+
+                if (intersects.length > 0) {
+                    const object = intersects[0].object;
+                    if (object.userData.component) {
+                        object.scale.multiplyScalar(1.1);
+                        
+                        // Create hover particles
+                        if (this.physicsEnabled && Math.random() > 0.7) {
+                            this.createParticleEffect(intersects[0].point, 1);
+                        }
+                    }
+                }
+            }
+            
+            createParticleEffect(position, count = 5) {
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = `${50 + (Math.random() - 0.5) * 100}%`;
+                    particle.style.top = `${50 + (Math.random() - 0.5) * 100}%`;
+                    particle.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 70%)`;
+                    particle.style.transform = `scale(${0.2 + Math.random()})`;
+                    this.container.appendChild(particle);
+                    
+                    // Physics properties
+                    const velocity = {
+                        x: (Math.random() - 0.5) * 4,
+                        y: (Math.random() - 0.5) * 4
+                    };
+                    
+                    const gravity = 0.1;
+                    const friction = 0.95;
+                    
+                    const animateParticle = () => {
+                        velocity.y += gravity;
+                        particle.style.left = `${parseFloat(particle.style.left) + velocity.x}%`;
+                        particle.style.top = `${parseFloat(particle.style.top) + velocity.y}%`;
+                        particle.style.opacity = parseFloat(particle.style.opacity) - 0.02;
+                        
+                        velocity.x *= friction;
+                        velocity.y *= friction;
+                        
+                        if (parseFloat(particle.style.opacity) > 0) {
+                            requestAnimationFrame(animateParticle);
+                        } else {
+                            particle.remove();
+                        }
+                    };
+                    
+                    particle.style.opacity = '0.8';
+                    animateParticle();
+                }
+            }
+
+            // Animation methods
+            animateButtonPress(button) {
+                const originalScale = button.userData.originalScale;
+                const pressScale = originalScale.clone().multiplyScalar(0.9);
+                
+                // Press animation
+                new TWEEN.Tween(button.scale)
+                    .to(pressScale, 100)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onComplete(() => {
+                        // Release animation
+                        new TWEEN.Tween(button.scale)
+                            .to(originalScale, 200)
+                            .easing(TWEEN.Easing.Elastic.Out)
+                            .start();
+                    })
+                    .start();
+            }
+
+            animateToggle(toggle) {
+                const switchMesh = toggle.children.find(child => 
+                    child.userData.component === 'toggle-switch'
+                );
+                
+                if (switchMesh) {
+                    const currentValue = toggle.userData.value;
+                    const newValue = !currentValue;
+                    const targetX = newValue ? 0.25 : -0.25;
+                    
+                    new TWEEN.Tween(switchMesh.position)
+                        .to({ x: targetX }, 300)
+                        .easing(TWEEN.Easing.Back.Out)
+                        .start();
+                    
+                    toggle.userData.value = newValue;
+                }
+            }
+
+            animateCard(card) {
+                const originalPos = card.userData.originalPosition || card.position.clone();
+                const hoverPos = originalPos.clone();
+                hoverPos.z += 0.5;
+                
+                new TWEEN.Tween(card.position)
+                    .to(hoverPos, 300)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onComplete(() => {
+                        setTimeout(() => {
+                            new TWEEN.Tween(card.position)
+                                .to(originalPos, 300)
+                                .easing(TWEEN.Easing.Quadratic.In)
+                                .start();
+                        }, 1000);
+                    })
+                    .start();
+            }
+
+            updateSlider(handle, intersects) {
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    const clampedX = Math.max(-0.8, Math.min(0.8, point.x));
+                    handle.position.x = clampedX;
+                    
+                    const value = (clampedX + 0.8) / 1.6;
+                    handle.userData.slider.userData.value = value;
+                    
+                    if (handle.userData.callback) {
+                        handle.userData.callback(value);
+                    }
+                }
+            }
+
+            updateKnob(knobHandle, intersects) {
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    const angle = Math.atan2(point.y, point.x);
+                    knobHandle.rotation.y = angle;
+                    
+                    const normalizedAngle = (angle + Math.PI) / (Math.PI * 2);
+                    knobHandle.userData.knob.userData.value = normalizedAngle;
+                    
+                    if (knobHandle.userData.callback) {
+                        knobHandle.userData.callback(normalizedAngle);
+                    }
+                }
+            }
+
+            createComponents() {
+                // Create all demo components
+                this.demoComponents = {};
+                
+                this.demoComponents.primaryButton = this.createComponent('button', {
+                    position: new THREE.Vector3(-4, 2, 0),
+                    style: 'primary',
+                    callback: () => console.log('Primary button clicked!'),
+                    name: 'primary-button'
+                });
+
+                this.demoComponents.secondaryButton = this.createComponent('button', {
+                    position: new THREE.Vector3(-4, 1, 0),
+                    style: 'secondary',
+                    callback: () => console.log('Secondary button clicked!'),
+                    name: 'secondary-button'
+                });
+
+                this.demoComponents.dangerButton = this.createComponent('button', {
+                    position: new THREE.Vector3(-4, 0, 0),
+                    style: 'danger',
+                    callback: () => console.log('Danger button clicked!'),
+                    name: 'danger-button'
+                });
+
+                this.demoComponents.slider = this.createComponent('slider', {
+                    position: new THREE.Vector3(-1, 2, 0),
+                    value: 0.6,
+                    callback: (value) => console.log('Slider value:', value.toFixed(2)),
+                    name: 'slider'
+                });
+
+                this.demoComponents.toggle = this.createComponent('toggle', {
+                    position: new THREE.Vector3(-1, 0.5, 0),
+                    value: true,
+                    callback: () => console.log('Toggle switched!'),
+                    name: 'toggle'
+                });
+
+                this.demoComponents.knob = this.createComponent('knob', {
+                    position: new THREE.Vector3(-1, -1.5, 0),
+                    value: 0.3,
+                    callback: (value) => console.log('Knob value:', value.toFixed(2)),
+                    name: 'knob'
+                });
+
+                this.demoComponents.progress = this.createComponent('progress', {
+                    position: new THREE.Vector3(2, 2, 0),
+                    value: 0.7,
+                    loading: true,
+                    name: 'progress'
+                });
+
+                this.demoComponents.card = this.createComponent('card', {
+                    position: new THREE.Vector3(2, -0.5, 0),
+                    callback: () => console.log('Card interacted!'),
+                    name: 'card'
+                });
+
+                this.demoComponents.menu = this.createComponent('menu', {
+                    position: new THREE.Vector3(4.5, 0, 0),
+                    callback: () => console.log('Menu item selected!'),
+                    name: 'menu'
+                });
+                
+                // Add advanced components
+                this.createAdvancedButton();
+                this.createRadialMenu();
+            }
+            
+            createAdvancedButton() {
+                const group = new THREE.Group();
+                
+                // Main button with glow effect
+                const geometry = new THREE.BoxGeometry(1.5, 0.6, 0.4);
+                const material = new THREE.MeshPhysicalMaterial({
+                    color: 0x00ff88,
+                    metalness: 0.8,
+                    roughness: 0.2,
+                    emissive: 0x004422,
+                    emissiveIntensity: 0.3,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const button = new THREE.Mesh(geometry, material);
+                button.castShadow = true;
+                button.receiveShadow = true;
+                
+                // Add glow ring
+                const ringGeometry = new THREE.RingGeometry(0.8, 1.0, 32);
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x00ff88,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.y = -0.3;
+                
+                group.add(button);
+                group.add(ring);
+                group.position.set(-6, -2, 0);
+                
+                button.userData = {
+                    component: 'advanced-button',
+                    ring: ring,
+                    originalScale: button.scale.clone(),
+                    callback: () => this.triggerButtonEffect(button, ring),
+                    name: 'advanced-button'
+                };
+                
+                this.scene.add(group);
+                this.demoComponents.advancedButton = group;
+            }
+            
+            createRadialMenu() {
+                const group = new THREE.Group();
+                const itemCount = 8;
+                
+                // Center hub
+                const hubGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
+                const hubMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x444444,
+                    metalness: 0.9,
+                    roughness: 0.1,
+                    emissive: 0x222222,
+                    emissiveIntensity: 0.1
+                });
+                const hub = new THREE.Mesh(hubGeometry, hubMaterial);
+                group.add(hub);
+                
+                // Menu items
+                for (let i = 0; i < itemCount; i++) {
+                    const angle = (i / itemCount) * Math.PI * 2;
+                    const radius = 1.5;
+                    
+                    const itemGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.1);
+                    const itemMaterial = new THREE.MeshPhysicalMaterial({
+                        color: new THREE.Color().setHSL(i / itemCount, 0.8, 0.6),
+                        metalness: 0.7,
+                        roughness: 0.2,
+                        emissive: new THREE.Color().setHSL(i / itemCount, 0.8, 0.2),
+                        emissiveIntensity: 0.1
+                    });
+                    
+                    const item = new THREE.Mesh(itemGeometry, itemMaterial);
+                    item.position.set(
+                        Math.cos(angle) * radius,
+                        0,
+                        Math.sin(angle) * radius
+                    );
+                    item.rotation.y = -angle;
+                    
+                    item.userData = {
+                        component: 'radial-menu-item',
+                        index: i,
+                        angle: angle,
+                        radius: radius,
+                        callback: () => this.activateRadialItem(i),
+                        name: `radial-item-${i}`
+                    };
+                    
+                    group.add(item);
+                }
+                
+                group.position.set(0, -3, 0);
+                group.userData = { 
+                    component: 'radial-menu', 
+                    rotation: 0,
+                    name: 'radial-menu'
+                };
+                this.scene.add(group);
+                this.demoComponents.radialMenu = group;
+            }
+            
+            triggerButtonEffect(button, ring) {
+                // Ripple effect
+                const rippleScale = { x: 1, y: 1 };
+                new TWEEN.Tween(rippleScale)
+                    .to({ x: 3, y: 3 }, 600)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onUpdate(() => {
+                        ring.scale.set(rippleScale.x, 1, rippleScale.y);
+                        ring.material.opacity = 0.3 * (1 - rippleScale.x / 3);
+                    })
+                    .onComplete(() => {
+                        ring.scale.set(1, 1, 1);
+                        ring.material.opacity = 0.3;
+                    })
+                    .start();
+
+                // Button pulse
+                const pulseScale = button.scale.clone();
+                new TWEEN.Tween(button.scale)
+                    .to(pulseScale.clone().multiplyScalar(1.2), 150)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onComplete(() => {
+                        new TWEEN.Tween(button.scale)
+                            .to(pulseScale, 200)
+                            .easing(TWEEN.Easing.Elastic.Out)
+                            .start();
+                    })
+                    .start();
+                    
+                // Create particle explosion
+                this.createParticleEffect(button.position, 30);
+            }
+            
+            activateRadialItem(index) {
+                console.log(`Radial menu item ${index} activated`);
+                // Create radial effect
+                const menu = this.demoComponents.radialMenu;
+                menu.children.slice(1).forEach((item, i) => {
+                    if (i === index) {
+                        new TWEEN.Tween(item.scale)
+                            .to({ x: 1.5, y: 1.5, z: 1.5 }, 300)
+                            .easing(TWEEN.Easing.Elastic.Out)
+                            .onComplete(() => {
+                                new TWEEN.Tween(item.scale)
+                                    .to({ x: 1, y: 1, z: 1 }, 200)
+                                    .start();
+                            })
+                            .start();
+                    }
+                });
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                // Calculate FPS
+                this.fpsCount++;
+                const now = Date.now();
+                if (now - this.fpsTime >= 1000) {
+                    this.fps = this.fpsCount;
+                    this.fpsCount = 0;
+                    this.fpsTime = now;
+                    document.getElementById('fps-display').textContent = `FPS: ${this.fps}`;
+                }
+
+                // Auto-rotate camera
+                if (this.cameraMode === 'auto') {
+                    const time = Date.now() * 0.0005;
+                    this.camera.position.x = Math.cos(time) * 8;
+                    this.camera.position.z = Math.sin(time) * 8;
+                    this.camera.lookAt(this.scene.position);
+                    
+                    // Update camera angle display
+                    const cameraAngle = Math.round(this.camera.rotation.y * 180 / Math.PI);
+                    document.getElementById('camera-angle').textContent = `${cameraAngle}°`;
+                }
+
+                // Animate progress bar
+                this.scene.traverse((child) => {
+                    if (child.userData.component === 'progress' && child.userData.loading) {
+                        const progress = (Math.sin(Date.now() * 0.002) + 1) / 2;
+                        child.userData.value = progress;
+                        
+                        const fillMesh = child.userData.fillMesh;
+                        if (fillMesh) {
+                            fillMesh.scale.x = progress;
+                            fillMesh.position.x = -1.2 + (1.2 * progress);
+                            
+                            // Update status display
+                            document.getElementById('status-progress').textContent = 
+                                `${Math.round(progress * 100)}%`;
+                        }
+                    }
+                    
+                    if (child.userData.component === 'floating-menu') {
+                        child.rotation.z += 0.01;
+                        child.userData.items.forEach((item, index) => {
+                            const time = Date.now() * 0.001;
+                            item.position.y += Math.sin(time * 2 + index) * 0.01;
+                        });
+                    }
+                    
+                    if (child.userData.component === 'radial-menu') {
+                        child.rotation.y += 0.005;
+                        child.children.forEach((item, index) => {
+                            if (item.userData.component === 'radial-menu-item') {
+                                const time = Date.now() * 0.001;
+                                item.position.y = Math.sin(time * 2 + index) * 0.1;
+                            }
+                        });
+                    }
+                });
+
+                // Update TWEEN animations
+                if (typeof TWEEN !== 'undefined') {
+                    TWEEN.update();
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // TWEEN.js lightweight implementation
+        const TWEEN = {
+            _tweens: [],
+            
+            Tween: function(object) {
+                this._object = object;
+                this._valuesStart = {};
+                this._valuesEnd = {};
+                this._duration = 1000;
+                this._easingFunction = TWEEN.Easing.Linear.None;
+                this._onCompleteCallback = null;
+                this._startTime = null;
+                
+                this.to = function(properties, duration) {
+                    this._valuesEnd = properties;
+                    if (duration !== undefined) this._duration = duration;
+                    return this;
+                };
+                
+                this.easing = function(easing) {
+                    this._easingFunction = easing;
+                    return this;
+                };
+                
+                this.onComplete = function(callback) {
+                    this._onCompleteCallback = callback;
+                    return this;
+                };
+                
+                this.start = function() {
+                    TWEEN._tweens.push(this);
+                    this._startTime = Date.now();
+                    
+                    for (let property in this._valuesEnd) {
+                        this._valuesStart[property] = this._object[property];
+                    }
+                    
+                    return this;
+                };
+                
+                this.update = function() {
+                    const elapsed = Date.now() - this._startTime;
+                    const progress = Math.min(elapsed / this._duration, 1);
+                    const easedProgress = this._easingFunction(progress);
+                    
+                    for (let property in this._valuesEnd) {
+                        const start = this._valuesStart[property];
+                        const end = this._valuesEnd[property];
+                        this._object[property] = start + (end - start) * easedProgress;
+                    }
+                    
+                    if (progress >= 1) {
+                        if (this._onCompleteCallback) {
+                            this._onCompleteCallback();
+                        }
+                        return false; // Remove from tweens array
+                    }
+                    
+                    return true; // Continue tweening
+                };
+                
+                return this;
+            },
+            
+            update: function() {
+                this._tweens = this._tweens.filter(tween => tween.update());
+            },
+            
+            Easing: {
+                Linear: {
+                    None: function(k) { return k; }
+                },
+                Quadratic: {
+                    In: function(k) { return k * k; },
+                    Out: function(k) { return k * (2 - k); },
+                    InOut: function(k) { 
+                        if ((k *= 2) < 1) return 0.5 * k * k;
+                        return -0.5 * (--k * (k - 2) - 1);
+                    }
+                },
+                Cubic: {
+                    In: function(k) { return k * k * k; },
+                    Out: function(k) { return --k * k * k + 1; },
+                    InOut: function(k) {
+                        if ((k *= 2) < 1) return 0.5 * k * k * k;
+                        return 0.5 * ((k -= 2) * k * k + 2);
+                    }
+                },
+                Elastic: {
+                    In: function(k) {
+                        if (k === 0) return 0;
+                        if (k === 1) return 1;
+                        return -Math.pow(2, 10 * (k - 1)) * Math.sin((k - 1.1) * 5 * Math.PI);
+                    },
+                    Out: function(k) {
+                        if (k === 0) return 0;
+                        if (k === 1) return 1;
+                        return Math.pow(2, -10 * k) * Math.sin((k - 0.1) * 5 * Math.PI) + 1;
+                    }
+                },
+                Back: {
+                    In: function(k) {
+                        const s = 1.70158;
+                        return k * k * ((s + 1) * k - s);
+                    },
+                    Out: function(k) {
+                        const s = 1.70158;
+                        return --k * k * ((s + 1) * k + s) + 1;
+                    }
+                },
+                Bounce: {
+                    In: function(k) {
+                        return 1 - TWEEN.Easing.Bounce.Out(1 - k);
+                    },
+                    Out: function(k) {
+                        if (k < (1 / 2.75)) {
+                            return 7.5625 * k * k;
+                        } else if (k < (2 / 2.75)) {
+                            return 7.5625 * (k -= (1.5 / 2.75)) * k + 0.75;
+                        } else if (k < (2.5 / 2.75)) {
+                            return 7.5625 * (k -= (2.25 / 2.75)) * k + 0.9375;
+                        } else {
+                            return 7.5625 * (k -= (2.625 / 2.75)) * k + 0.984375;
+                        }
+                    }
+                }
+            }
+        };
+
+        // Initialize the library
+        window.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('container');
+            const ui3d = new UI3DLibrary(container);
+            
+            // Expose library to global scope for integration
+            window.UI3DLibrary = ui3d;
+            
+            console.log('🎨 Advanced 3D UI Components Library loaded successfully!');
+            console.log('📦 Available components: Button, Slider, Toggle, Knob, Progress, Card, Menu');
+            console.log('🔧 Ready for integration into larger applications');
+            
+            // Fade out title after 3 seconds
+            setTimeout(() => {
+                const title = document.getElementById('title-overlay');
+                new TWEEN.Tween({ opacity: 1 })
+                    .to({ opacity: 0 }, 1500)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onUpdate(obj => {
+                        title.style.opacity = obj.opacity;
+                    })
+                    .onComplete(() => {
+                        title.style.display = 'none';
+                    })
+                    .start();
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
